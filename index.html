@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUNA - Inversiones & P2P Global</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Marked.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; }
+        .header-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+        .chart-container { position: relative; height: 150px; width: 100%; }
+        .hidden { display: none !important; }
+        
+        /* Ticker Animation */
+        .ticker-wrap {
+            width: 100%; overflow: hidden; background-color: #0b1120; 
+            padding: 10px 0; white-space: nowrap; position: sticky; top: 0; z-index: 50; border-bottom: 1px solid #1e293b;
+        }
+        .ticker { display: inline-block; animation: ticker 60s linear infinite; }
+        .ticker-item { display: inline-flex; align-items: center; padding: 0 2rem; color: white; font-weight: 600; font-size: 0.9rem; }
+        @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+        
+        .price-up { color: #4ade80; margin-left: 5px; }
+        .price-down { color: #f87171; margin-left: 5px; }
+        .coin-icon { width: 20px; height: 20px; margin-right: 8px; border-radius: 50%; background: #fff; }
+
+        .chat-anim { animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+        .star-rating { display: flex; flex-direction: row-reverse; justify-content: flex-end; }
+        .star-rating input { display: none; }
+        .star-rating label { cursor: pointer; width: 25px; height: 25px; color: #d1d5db; font-size: 25px; line-height: 25px; }
+        .star-rating label::before { content: '★'; }
+        .star-rating input:checked ~ label, .star-rating label:hover, .star-rating label:hover ~ label { color: #fbbf24; }
+        
+        .admin-card { @apply bg-white p-4 rounded shadow border-l-4; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Ticker -->
+    <div class="ticker-wrap">
+        <div class="ticker" id="ticker-content">Cargando precios de mercado...</div>
+    </div>
+
+    <!-- Header -->
+    <header class="header-bg text-white shadow-lg z-40">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center mb-4 md:mb-0 cursor-pointer" onclick="location.reload()">
+                <svg class="w-10 h-10 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" stroke="#10B981" /> 
+                </svg>
+                <h1 class="text-3xl font-bold tracking-tighter">LUNA</h1>
+            </div>
+            
+            <nav class="flex flex-wrap justify-center gap-4 items-center">
+                <button onclick="openModal('admin-login-modal')" class="text-gray-400 hover:text-white relative" title="Acceso Administrativo">
+                    🔒 <span id="admin-badge" class="hidden absolute -top-2 -right-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">0</span>
+                </button>
+                
+                <button onclick="scrollToId('planes')" class="hover:text-yellow-400 font-medium text-sm">Planes</button>
+                <button onclick="scrollToId('account')" class="hover:text-yellow-400 font-medium text-sm">Mi Cuenta</button>
+                <button onclick="scrollToId('p2p')" class="text-green-400 hover:text-green-300 font-bold text-sm border border-green-500 px-2 py-1 rounded">P2P Global</button>
+                
+                <button id="btn-auth" onclick="openModal('auth-modal')" class="bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded shadow text-sm transition">
+                    Cuenta / Registro
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- VISTA DE ADMINISTRADOR -->
+    <div id="admin-panel" class="hidden bg-gray-100 min-h-screen border-b-4 border-red-500 shadow-inner absolute top-0 left-0 w-full z-50">
+        <div class="bg-gray-900 text-white p-4 flex justify-between items-center sticky top-0">
+            <h3 class="text-xl font-bold flex items-center gap-2">👮 LUNA Admin Suite</h3>
+            <div class="flex gap-4 items-center">
+                <span class="text-xs text-gray-400">Admin: adrianrodrigueza00</span>
+                <button onclick="toggleAdmin()" class="text-red-400 font-bold hover:text-red-300 text-sm">Cerrar Sesión Admin</button>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto p-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div class="bg-white p-4 rounded shadow border-l-4 border-blue-500">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Usuarios</p>
+                    <p class="text-2xl font-bold" id="adm-stats-users">0</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow border-l-4 border-yellow-500">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Pendientes</p>
+                    <p class="text-2xl font-bold text-yellow-600" id="adm-stats-pending">0</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow border-l-4 border-green-500">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Capital Total</p>
+                    <p class="text-2xl font-bold text-green-600" id="adm-stats-capital">$0.00</p>
+                </div>
+            </div>
+
+            <!-- Configuración de Planes -->
+            <div class="bg-white p-6 rounded shadow mb-8">
+                <h4 class="font-bold text-gray-800 mb-4 border-b pb-2">⚙️ Configuración de Planes</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="admin-plans-config">
+                    <!-- JS Generated -->
+                </div>
+                <button onclick="savePlanChanges()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full md:w-auto text-sm font-bold">Guardar Cambios</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                <div class="bg-white p-3 rounded shadow">
+                    <h4 class="font-bold text-gray-700 mb-2 border-b pb-1">KYC</h4>
+                    <div id="list-kyc" class="space-y-2 max-h-60 overflow-y-auto"></div>
+                </div>
+                <div class="bg-white p-3 rounded shadow">
+                    <h4 class="font-bold text-gray-700 mb-2 border-b pb-1">Depósitos</h4>
+                    <div id="list-deposits" class="space-y-2 max-h-60 overflow-y-auto"></div>
+                </div>
+                <div class="bg-white p-3 rounded shadow">
+                    <h4 class="font-bold text-gray-700 mb-2 border-b pb-1">Retiros</h4>
+                    <div id="list-withdraws" class="space-y-2 max-h-60 overflow-y-auto"></div>
+                </div>
+                <div class="bg-white p-3 rounded shadow">
+                    <h4 class="font-bold text-green-800 mb-2 border-b pb-1">P2P / Anuncios</h4>
+                    <div id="list-p2p" class="space-y-2 max-h-60 overflow-y-auto"></div>
+                </div>
+            </div>
+            
+            <div class="mt-8 bg-white p-4 rounded shadow">
+                 <h4 class="font-bold text-gray-800 mb-4">Base de Datos</h4>
+                 <div class="overflow-x-auto">
+                     <table class="w-full text-xs text-left">
+                         <thead class="bg-gray-100"><tr><th class="p-2">ID</th><th class="p-2">Nombre</th><th class="p-2">Email</th><th class="p-2">Saldo</th><th class="p-2">Verif.</th></tr></thead>
+                         <tbody id="adm-users-table"></tbody>
+                     </table>
+                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VISTA DE USUARIO -->
+    <div id="user-view" class="flex flex-col flex-grow w-full">
+        <main class="flex-grow max-w-7xl mx-auto px-4 py-8 w-full">
+            
+            <!-- Hero -->
+            <section class="text-center mb-16 bg-white p-8 rounded-2xl shadow-xl relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-yellow-400 to-orange-500"></div>
+                <h2 class="text-4xl md:text-6xl font-extrabold text-slate-900 mb-4">Inversiones <span class="text-yellow-500">To The Moon</span> 🚀</h2>
+                <p class="text-lg text-gray-600 mb-8">Rentabilidad diaria en USDT (BEP20).</p>
+                <div class="inline-block bg-blue-50 text-blue-800 px-4 py-2 rounded-lg font-semibold border-l-4 border-blue-500">
+                    🌐 Acceso Global | Sin restricciones
+                </div>
+            </section>
+
+            <!-- Planes -->
+            <section id="planes" class="mb-16">
+                <h3 class="text-3xl font-bold text-center text-slate-800 mb-10">Planes de Inversión</h3>
+                <div id="plans-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Rendered by JS -->
+                </div>
+            </section>
+
+            <!-- P2P Lunar -->
+            <section id="p2p" class="mb-16 bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-900 flex items-center gap-2">♻️ Mercado P2P Global</h3>
+                        <p class="text-sm text-gray-500">Compra y venta segura con depósito de garantía (10 USDT).</p>
+                    </div>
+                    <div class="flex gap-2 mt-4 md:mt-0 items-center flex-wrap">
+                        <select id="p2p-currency-filter" onchange="renderP2P()" class="border rounded px-2 py-1 text-sm">
+                            <option value="ALL">Todas las Monedas</option>
+                            <option value="USD">USD</option><option value="EUR">EUR</option><option value="ARS">ARS</option>
+                            <option value="VES">VES</option><option value="COP">COP</option><option value="MXN">MXN</option>
+                            <option value="PEN">PEN</option><option value="CLP">CLP</option><option value="BRL">BRL</option>
+                            <option value="CNY">CNY</option><option value="RUB">RUB</option><option value="INR">INR</option>
+                        </select>
+                        <button onclick="setP2PMode('buy')" id="btn-p2p-buy" class="px-3 py-1 bg-green-600 text-white font-bold rounded text-sm">Comprar</button>
+                        <button onclick="setP2PMode('sell')" id="btn-p2p-sell" class="px-3 py-1 bg-gray-200 text-gray-700 font-bold rounded text-sm">Vender</button>
+                        <button onclick="openCreateAd()" class="px-3 py-1 border border-gray-300 text-gray-600 font-bold rounded hover:bg-gray-50 text-sm">+ Publicar Anuncio</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-100 text-gray-600 uppercase">
+                            <tr>
+                                <th class="px-4 py-3">Comerciante</th>
+                                <th class="px-4 py-3">Precio</th>
+                                <th class="px-4 py-3">Límites</th>
+                                <th class="px-4 py-3">Moneda</th>
+                                <th class="px-4 py-3 text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="p2p-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Mi Cuenta -->
+            <section id="account" class="mb-16 bg-white p-6 rounded-2xl shadow-lg">
+                <div class="flex justify-between items-center border-b pb-4 mb-6">
+                    <h3 class="text-2xl font-bold text-gray-900">Panel de Usuario</h3>
+                    <button onclick="openAI()" class="bg-gradient-to-r from-gray-800 to-black text-white px-4 py-2 rounded-full text-xs font-bold shadow hover:scale-105 transition">✨ IA Advisor</button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div class="bg-blue-50 p-4 rounded-xl"><p class="text-xs font-bold text-blue-600 uppercase">Disponible</p><p class="text-2xl font-extrabold text-gray-800"><span id="ui-balance">0.00</span> <span class="text-xs">USDT</span></p></div>
+                    <div class="bg-purple-50 p-4 rounded-xl"><p class="text-xs font-bold text-purple-600 uppercase">Invertido</p><p class="text-2xl font-extrabold text-gray-800"><span id="ui-invested">0.00</span> <span class="text-xs">USDT</span></p></div>
+                    <div class="bg-green-50 p-4 rounded-xl"><p class="text-xs font-bold text-green-600 uppercase">Ganancias</p><p class="text-2xl font-extrabold text-gray-800"><span id="ui-earnings">0.00</span> <span class="text-xs">USDT</span></p></div>
+                    <div class="bg-gray-100 p-4 rounded-xl text-center flex flex-col justify-center">
+                        <div id="ui-status-content">
+                            <p class="text-xs font-bold text-gray-500 mb-2">Puntos LUNA/USDT</p>
+                        </div>
+                        <button onclick="openModal('kyc-modal')" id="btn-kyc" class="hidden mt-2 w-full bg-red-500 text-white text-xs font-bold py-1 px-2 rounded hover:bg-red-600">Verificar ID (KYC)</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                    <button id="btn-deposit" onclick="openModal('deposit-modal')" class="hidden bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">Depositar</button>
+                    <button id="btn-withdraw" onclick="tryWithdraw()" class="hidden bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg">Retirar</button>
+                    <button onclick="simulateDay()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg">Simular 1 Día</button>
+                </div>
+
+                <div id="affiliate-panel" class="hidden bg-yellow-50 border border-yellow-200 p-4 rounded-xl mb-8">
+                    <h4 class="font-bold text-yellow-800 mb-2">🤝 Programa de Afiliados</h4>
+                    <div class="flex flex-col md:flex-row gap-4 items-center">
+                        <div class="flex-grow w-full">
+                            <input type="text" id="ref-link" readonly class="w-full p-2 text-xs border rounded bg-white text-gray-600" value="">
+                        </div>
+                        <div class="text-right whitespace-nowrap">
+                            <span class="text-xs font-bold text-gray-500">Ganancias:</span> 
+                            <span id="ui-affiliate" class="font-bold text-green-600 text-lg">0.00</span> USDT
+                        </div>
+                        <div class="flex gap-1">
+                            <button onclick="simRef(1)" class="bg-gray-200 text-xs px-2 py-1 rounded hover:bg-gray-300">+0.5</button>
+                            <button onclick="simRef(2)" class="bg-gray-200 text-xs px-2 py-1 rounded hover:bg-gray-300">+1.0</button>
+                            <button onclick="simRef(3)" class="bg-gray-200 text-xs px-2 py-1 rounded hover:bg-gray-300">+1.5</button>
+                        </div>
+                    </div>
+                </div>
+
+                <h4 class="text-lg font-bold text-gray-800 mb-4">Inversiones Activas</h4>
+                <div class="overflow-x-auto bg-white border rounded-lg">
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="bg-gray-50 text-gray-700 uppercase">
+                            <tr>
+                                <th class="px-6 py-3">Plan</th>
+                                <th class="px-6 py-3">Monto</th>
+                                <th class="px-6 py-3">Días</th>
+                                <th class="px-6 py-3 text-right">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="investment-list">
+                            <tr><td colspan="4" class="px-6 py-4 text-center italic">Sin inversiones activas.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <!-- Reseñas -->
+            <section id="resenas" class="mb-16">
+                <h3 class="text-2xl font-bold text-center mb-6">Opiniones</h3>
+                <div class="bg-white p-6 rounded-xl shadow mb-6 max-w-2xl mx-auto">
+                    <input type="text" id="review-name" class="w-full border p-2 rounded mb-2" placeholder="Tu Nombre">
+                    <div class="flex justify-end mb-2">
+                        <div class="star-rating">
+                            <input type="radio" id="s5" name="r" value="5" onclick="rate(5)"><label for="s5"></label>
+                            <input type="radio" id="s4" name="r" value="4" onclick="rate(4)"><label for="s4"></label>
+                            <input type="radio" id="s3" name="r" value="3" onclick="rate(3)"><label for="s3"></label>
+                            <input type="radio" id="s2" name="r" value="2" onclick="rate(2)"><label for="s2"></label>
+                            <input type="radio" id="s1" name="r" value="1" onclick="rate(1)"><label for="s1"></label>
+                        </div>
+                    </div>
+                    <textarea id="review-msg" class="w-full border p-2 rounded mb-2" rows="2" placeholder="Comentario..."></textarea>
+                    <button onclick="addReview()" class="w-full bg-blue-600 text-white font-bold py-2 rounded">Publicar</button>
+                </div>
+                <div id="reviews-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+            </section>
+        </main>
+
+        <footer class="bg-gray-900 text-white py-8 text-center">
+            <div class="flex justify-center space-x-6 mb-4">
+                <a href="#" class="hover:text-blue-400">Twitter</a>
+                <a href="#" class="hover:text-blue-600">Facebook</a>
+                <a href="#" class="hover:text-red-500">YouTube</a>
+                <a href="#" class="hover:text-blue-300">Telegram</a>
+            </div>
+            <p class="text-xs text-gray-500 mb-2">&copy; 2024 LUNA Investment. Simulación Educativa.</p>
+            <a href="javascript:void(0)" onclick="openModal('admin-login-modal')" class="text-[10px] text-gray-700 hover:text-gray-500">Admin Access</a>
+        </footer>
+
+        <!-- Support Button -->
+        <a href="https://wa.me/message/HXFFSJ2DYQE3D1" target="_blank" class="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-2xl chat-anim hover:bg-blue-700 z-50 flex items-center gap-2">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+            <span class="font-bold text-sm">Soporte</span>
+        </a>
+    </div>
+
+    <!-- MODALS -->
+    
+    <!-- Auth -->
+    <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h4 class="text-2xl font-bold mb-4">Cuenta / Registro</h4><input id="reg-name" type="text" placeholder="Nombre" class="w-full border p-2 rounded mb-2"><input id="reg-last" type="text" placeholder="Apellido" class="w-full border p-2 rounded mb-2"><input id="reg-email" type="email" placeholder="Gmail" class="w-full border p-2 rounded mb-4"><button onclick="doLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded mb-2">Registrar / Entrar</button><button onclick="closeModal('auth-modal')" class="w-full text-gray-500">Cancelar</button></div></div>
+    
+    <!-- Admin Login -->
+    <div id="admin-login-modal" class="fixed inset-0 bg-gray-900 bg-opacity-90 hidden items-center justify-center z-50"><div class="bg-white p-8 rounded-xl w-full max-w-sm shadow-2xl border-t-4 border-red-600"><h4 class="text-2xl font-bold mb-2 text-red-600 text-center">Acceso Admin</h4><input id="adm-user" type="text" placeholder="Usuario (Admin)" class="w-full border p-3 rounded mb-3 bg-gray-50"><input id="adm-email" type="email" placeholder="Email (adrianrodrigueza00@gmail.com)" class="w-full border p-3 rounded mb-6 bg-gray-50"><button onclick="doAdminLogin()" class="w-full bg-red-600 text-white font-bold py-3 rounded hover:bg-red-700 transition">Entrar al Panel</button><button onclick="closeModal('admin-login-modal')" class="w-full text-gray-400 text-sm mt-4 hover:underline text-center">Volver</button></div></div>
+
+    <!-- Deposit -->
+    <div id="deposit-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-full max-w-sm">
+            <h4 class="text-xl font-bold mb-4">Depositar Fondos</h4>
+            <div class="bg-gray-100 p-2 rounded mb-4 text-center text-xs break-all"><span class="font-bold block mb-1">WALLET EMPRESA (BEP20):</span><span id="company-wallet">0xc0bd02951cc4858bd1f759ddd10f632a69d51bf8</span></div>
+            <input id="dep-id" type="text" placeholder="TU ID (6 Digitos)" class="w-full border p-2 rounded mb-2 uppercase">
+            <input id="dep-amount" type="number" placeholder="Monto (Min 2 USDT)" class="w-full border p-2 rounded mb-4">
+            
+            <!-- Capture Input -->
+            <label class="block text-sm font-medium text-gray-700 mb-1">Comprobante de Pago (Captura)</label>
+            <input type="file" id="deposit-proof" accept="image/*" class="w-full border border-gray-300 rounded-lg p-2 mb-4 text-xs file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+
+            <div class="flex gap-2"><button onclick="closeModal('deposit-modal')" class="flex-1 bg-gray-200 rounded py-2">Cancelar</button><button onclick="doDeposit()" class="flex-1 bg-green-600 text-white rounded py-2">Enviar</button></div>
+        </div>
+    </div>
+
+    <!-- Withdraw -->
+    <div id="withdraw-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h4 class="text-xl font-bold mb-4">Retirar Fondos</h4><p class="mb-4 text-sm">Disponible: <span id="wd-avail">0</span> USDT</p><input id="wd-amount" type="number" placeholder="Monto (Min 5 USDT)" class="w-full border p-2 rounded mb-2"><input id="wd-id" type="text" placeholder="TU ID" class="w-full border p-2 rounded mb-2 uppercase"><input id="wd-wallet" type="text" placeholder="Tu Wallet BEP20" class="w-full border p-2 rounded mb-1"><p class="text-xs text-red-500 text-right mb-4">Fee: 3%</p><div class="flex gap-2"><button onclick="closeModal('withdraw-modal')" class="flex-1 bg-gray-200 rounded py-2">Cancelar</button><button onclick="doWithdraw()" class="flex-1 bg-red-500 text-white rounded py-2">Retirar</button></div></div></div>
+
+    <!-- Invest -->
+    <div id="invest-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h4 id="invest-modal-title" class="text-xl font-bold mb-2">Invertir</h4><p class="text-sm text-gray-500 mb-4">Capital bloqueado por el periodo.</p><label class="text-xs font-bold block mb-1">Monto (Min: <span id="inv-min"></span>)</label><input id="inv-amount" type="number" class="w-full border p-2 rounded mb-4"><div class="flex gap-2"><button onclick="closeModal('invest-modal')" class="flex-1 bg-gray-200 rounded py-2">Cancelar</button><button onclick="doInvest()" class="flex-1 bg-blue-600 text-white rounded py-2">Confirmar</button></div></div></div>
+    
+    <!-- P2P Trade -->
+    <div id="p2p-trade-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-full max-w-md">
+            <h4 class="text-xl font-bold mb-2">Orden P2P</h4>
+            <input type="hidden" id="p2p-oid">
+            <p class="mb-4 text-sm">Tasa: <span id="p2p-rate" class="font-bold"></span></p>
+            <input id="p2p-amt" type="number" placeholder="Cantidad USDT" class="w-full border p-2 rounded mb-4">
+            
+            <!-- Capture Input -->
+            <label class="block text-sm font-medium text-gray-700 mb-1">Comprobante de Transferencia</label>
+            <input type="file" id="p2p-proof" accept="image/*" class="w-full border border-gray-300 rounded-lg p-2 mb-4 text-xs file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+
+            <div class="flex gap-2"><button onclick="closeModal('p2p-trade-modal')" class="flex-1 bg-gray-200 rounded py-2">Cancelar</button><button onclick="doP2PTrade()" class="flex-1 bg-green-600 text-white rounded py-2">Confirmar</button></div>
+        </div>
+    </div>
+
+    <!-- P2P Create -->
+    <div id="p2p-create-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-full max-w-sm">
+            <h4 class="text-xl font-bold mb-4">Crear Anuncio</h4>
+            <div class="bg-yellow-50 p-2 rounded mb-4 border border-yellow-200">
+                <p class="text-xs text-yellow-800">⚠️ <strong>Requisito:</strong> Se bloquearán 10 USDT como depósito de seguridad.</p>
+            </div>
+            <select id="ad-type" class="w-full border p-2 rounded mb-2"><option value="sell">Vender USDT</option><option value="buy">Comprar USDT</option></select>
+            <select id="ad-fiat" class="w-full border p-2 rounded mb-2">
+                <option value="USD">USD (Dólar)</option><option value="EUR">EUR (Euro)</option><option value="ARS">ARS (Peso Arg)</option>
+                <option value="VES">VES (Bolívar)</option><option value="COP">COP (Peso Col)</option><option value="MXN">MXN (Peso Mex)</option>
+                <option value="BRL">BRL (Real)</option><option value="PEN">PEN (Sol)</option><option value="CLP">CLP (Peso Chi)</option>
+                <option value="CNY">CNY (Yuan)</option><option value="RUB">RUB (Rublo)</option><option value="INR">INR (Rupia)</option>
+            </select>
+            <input id="ad-price" type="number" placeholder="Precio (por 1 USDT)" class="w-full border p-2 rounded mb-2">
+            <input id="ad-limit" type="number" placeholder="Total USDT Disponible" class="w-full border p-2 rounded mb-2">
+            <input id="ad-method" type="text" placeholder="Método Pago" class="w-full border p-2 rounded mb-4">
+            <div class="flex gap-2"><button onclick="closeModal('p2p-create-modal')" class="flex-1 bg-gray-200 rounded py-2">Cancelar</button><button onclick="doCreateAd()" class="flex-1 bg-blue-600 text-white rounded py-2">Publicar</button></div>
+        </div>
+    </div>
+    
+    <!-- KYC -->
+    <div id="kyc-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h4 class="text-xl font-bold mb-4">Verificación KYC</h4><div id="kyc-content-area"><p class="text-sm text-gray-600 mb-4">Solicitud de verificación para habilitar retiros.</p><button onclick="processKYC()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">Solicitar Verificación</button></div><div id="kyc-success-area" class="hidden text-center py-4 font-bold text-green-600">¡Verificado!</div><button onclick="closeModal('kyc-modal')" class="w-full text-gray-500 mt-2">Cerrar</button></div></div>
+    
+    <!-- AI -->
+    <div id="ai-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-md"><h4 class="text-xl font-bold mb-4">Asistente IA</h4><div id="ai-input"><select id="ai-r" class="w-full border p-2 rounded mb-2"><option>Bajo</option><option>Medio</option><option>Alto</option></select><button onclick="processAI()" class="w-full bg-slate-800 text-white font-bold py-2 rounded">Consultar</button></div><p id="ai-out" class="hidden mt-4 p-3 bg-gray-100 text-sm rounded"></p><button onclick="closeModal('ai-modal')" class="w-full text-gray-500 mt-4 text-sm">Cerrar</button></div></div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-gray-800 text-white px-6 py-3 rounded shadow-xl translate-y-24 opacity-0 transition-all duration-300 z-50 font-semibold text-sm"></div>
+
+    <script>
+        /* --- CONFIGURACIÓN GLOBAL --- */
+        let plansConfig = {
+            1: { name: "Inicial", min: 2, days: 15, rate: 0.01, color: '#2563eb' },
+            2: { name: "Avanzado", min: 15, days: 10, rate: 0.015, color: '#9333ea' },
+            3: { name: "VIP", min: 50, days: 7, rate: 0.02, color: '#eab308' }
+        };
+        // CONFIGURA TU EMAIL AQUÍ
+        const ADMIN_EMAIL = "adrianrodrigueza00@gmail.com";
+        const apiKey = "";
+
+        /* --- ESTADO --- */
+        let state = {
+            user: null, 
+            usersDB: [],
+            requests: { kyc:[], deposits:[], withdrawals:[], p2p:[] },
+            p2pAds: [
+                {id:1, user:'TraderPro', type:'sell', price:1.01, total:500, method:'Banco'},
+                {id:2, user:'CryptoKing', type:'buy', price:0.99, total:1000, method:'Pago Movil'}
+            ],
+            reviews: [
+                {name:'Ana', rating:5, text:'Excelente plataforma.'},
+                {name:'Luis', rating:4, text:'Pagos rápidos.'}
+            ]
+        };
+
+        let selectedPlanId = null;
+        let starRating = 0;
+        let p2pMode = 'buy';
+        let chartInstances = {};
+
+        /* --- FUNCIONES PRINCIPALES --- */
+
+        window.onload = function() {
+            const saved = localStorage.getItem('lunaFullState');
+            if(saved) {
+                const parsed = JSON.parse(saved);
+                state = { ...state, ...parsed };
+                if(parsed.plansConfig) plansConfig = parsed.plansConfig;
+            }
+            
+            renderTicker();
+            setInterval(renderTicker, 10000);
+            renderUserUI(); 
+        };
+
+        function save() {
+            const dataToSave = { ...state, plansConfig };
+            localStorage.setItem('lunaFullState', JSON.stringify(dataToSave));
+            renderUserUI();
+            if(!document.getElementById('admin-panel').classList.contains('hidden')) renderAdminDashboard();
+        }
+
+        function toast(msg, type='neutral') {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.className = `fixed bottom-5 right-5 px-6 py-3 rounded shadow-xl transition-all duration-300 z-50 text-white translate-y-0 opacity-100 ${type==='success'?'bg-green-600':type==='error'?'bg-red-500':'bg-gray-800'}`;
+            setTimeout(() => { t.classList.add('translate-y-24', 'opacity-0'); }, 3000);
+        }
+
+        function sendMail(subject, body) {
+            window.open(`mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+        }
+
+        // --- GLOBAL BINDINGS ---
+        window.openModal = function(id) { document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex'); }
+        window.closeModal = function(id) { document.getElementById(id).classList.add('hidden'); document.getElementById(id).classList.remove('flex'); }
+        window.scrollToId = function(id) { document.getElementById(id).scrollIntoView({behavior:'smooth'}); }
+        window.setLanguage = function(v) { console.log(v); }
+        window.openAuthModal = function() { openModal('auth-modal'); }
+        window.openVerificationCheck = function() { openModal('kyc-modal'); }
+        window.tryWithdraw = function() { if(!state.user.verified) return toast('Requiere KYC', 'error'); openModal('withdraw-modal'); }
+        window.startInvest = function(id) { if(!state.user) return openModal('auth-modal'); selectedPlanId=id; document.getElementById('inv-min').innerText=plansConfig[id].min; openModal('invest-modal'); }
+        window.simRef = function(type) {
+            const reward = type === 1 ? 0.5 : type === 2 ? 1.0 : 1.5;
+            state.balance += reward;
+            state.affiliateEarnings += reward;
+            state.lunaPoints += 1000;
+            toast(`+${reward} USDT por referido`, 'success');
+            save();
+        }
+        window.copyReferralLink = function() { navigator.clipboard.writeText(document.getElementById('ref-link').value); toast('Link Copiado', 'success'); }
+        window.copyAddress = function() { navigator.clipboard.writeText("0xc0bd02951cc4858bd1f759ddd10f632a69d51bf8"); toast('Wallet Copiada', 'success'); }
+        window.rate = function(n) { starRating = n; }
+        window.addReview = function() {
+            const name = document.getElementById('review-name').value;
+            const text = document.getElementById('review-msg').value;
+            if(!name || !text) return toast('Faltan datos', 'error');
+            state.reviews.unshift({name, rating: starRating || 5, text});
+            toast('Reseña enviada', 'success');
+            renderReviews();
+            save();
+        }
+        function renderReviews() {
+            const grid = document.getElementById('reviews-grid');
+            grid.innerHTML = '';
+            state.reviews.forEach(r => {
+                const stars = '★'.repeat(r.rating) + '☆'.repeat(5-r.rating);
+                grid.innerHTML += `<div class="bg-gray-50 p-4 rounded shadow-sm"><div class="flex justify-between mb-2"><span class="font-bold">${r.name}</span><span class="text-yellow-400">${'★'.repeat(r.rating)}</span></div><p class="text-sm text-gray-600">"${r.text}"</p></div>`;
+            });
+        }
+        window.openAI = function() { openModal('ai-modal'); }
+        window.processAI = async function() {
+            document.getElementById('ai-out').classList.remove('hidden');
+            document.getElementById('ai-out').innerText = "Analizando perfil... Recomendación: Diversificar en Plan Avanzado y mantener liquidez.";
+        }
+        window.openCreateAd = function() {
+            if(!state.user) return openModal('auth-modal');
+            openModal('p2p-create-modal');
+        }
+        
+        async function renderTicker() {
+            const coins = [{s:'BTC', p:98000}, {s:'ETH', p:3400}, {s:'ZEC', p:45}, {s:'USDT', p:1}];
+            let html = '';
+            coins.forEach(c => {
+                const p = (c.p * (1 + (Math.random()-0.5)*0.02)).toFixed(2);
+                const col = Math.random()>0.5 ? 'price-up' : 'price-down';
+                html += `<span class="ticker-item">${c.s}: $${p} <span class="${col}">0.5%</span></span>`;
+            });
+            document.getElementById('ticker-content').innerHTML = html;
+        }
+
+        function renderCharts() {
+            [1,2,3].forEach(id => {
+                const ctx = document.getElementById(`chart-plan-${id}`);
