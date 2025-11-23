@@ -4,15 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LUNA - Inversiones & P2P Global</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Marked.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; }
         .header-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+        .chart-container { position: relative; height: 150px; width: 100%; }
         .hidden { display: none !important; }
-        .flex { display: flex !important; } /* Forzar flex cuando se quita hidden */
         
+        /* Ticker Animation */
         .ticker-wrap {
             width: 100%; overflow: hidden; background-color: #0b1120; 
             padding: 10px 0; white-space: nowrap; position: sticky; top: 0; z-index: 50; border-bottom: 1px solid #1e293b;
@@ -20,371 +26,740 @@
         .ticker { display: inline-block; animation: ticker 60s linear infinite; }
         .ticker-item { display: inline-flex; align-items: center; padding: 0 2rem; color: white; font-weight: 600; font-size: 0.9rem; }
         @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+        
         .price-up { color: #4ade80; margin-left: 5px; }
+        .price-down { color: #f87171; margin-left: 5px; }
+        .coin-icon { width: 20px; height: 20px; margin-right: 8px; border-radius: 50%; background: #fff; }
+
+        .chat-anim { animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+        .star-rating { display: flex; flex-direction: row-reverse; justify-content: flex-end; }
+        .star-rating input { display: none; }
+        .star-rating label { cursor: pointer; width: 25px; height: 25px; color: #d1d5db; font-size: 25px; line-height: 25px; }
+        .star-rating label::before { content: '★'; }
+        .star-rating input:checked ~ label, .star-rating label:hover, .star-rating label:hover ~ label { color: #fbbf24; }
+        
+        .admin-card { @apply bg-white p-4 rounded shadow border-l-4; }
     </style>
-
-    <script>
-        // --- VARIABLES GLOBALES ---
-        var state = {
-            user: null, 
-            p2pAds: [
-                {id:1, user:'PedroCrypto', type:'sell', price:1.02},
-                {id:2, user:'AnaTrade', type:'buy', price:0.99}
-            ]
-        };
-        
-        var plansConfig = {
-            1: { name: "Inicial", min: 2, days: 15, rate: 0.01 },
-            2: { name: "Avanzado", min: 15, days: 10, rate: 0.015 },
-            3: { name: "VIP", min: 50, days: 7, rate: 0.02 }
-        };
-        
-        var selectedPlanId = null;
-
-        // --- FUNCIONES DEL SISTEMA ---
-        
-        // 1. Abrir Modal
-        function openModal(id) {
-            var el = document.getElementById(id);
-            if(el) {
-                el.classList.remove('hidden');
-                // Forzamos un estilo flex para centrar
-                el.style.display = 'flex';
-            } else {
-                console.error("No existe el modal: " + id);
-            }
-        }
-
-        // 2. Cerrar Modal
-        function closeModal(id) {
-            var el = document.getElementById(id);
-            if(el) {
-                el.classList.add('hidden');
-                el.style.display = 'none';
-            }
-        }
-
-        // 3. Scroll
-        function scrollToId(id) {
-            var el = document.getElementById(id);
-            if(el) el.scrollIntoView({behavior:'smooth'});
-        }
-
-        // 4. Login Simulado
-        function doLogin() {
-            var nameInput = document.getElementById('reg-name');
-            var name = nameInput.value;
-            
-            if(!name) {
-                alert("Por favor escribe un nombre");
-                return;
-            }
-            
-            state.user = { name: name, balance: 0, invested: 0, earnings: 0, verified: false, investments: [] };
-            saveUser();
-            alert("¡Bienvenido " + name + "!");
-            closeModal('auth-modal');
-            renderUserUI();
-        }
-
-        // 5. Renderizar Interfaz
-        function renderUserUI() {
-            if(state.user) {
-                // Ocultar boton registro
-                document.getElementById('btn-auth').classList.add('hidden');
-                document.getElementById('btn-auth').style.display = 'none';
-                
-                // Mostrar info usuario
-                var userInfo = document.getElementById('user-info-display');
-                userInfo.classList.remove('hidden');
-                userInfo.style.display = 'block';
-                
-                document.getElementById('nav-username').innerText = state.user.name;
-                
-                // Actualizar saldos
-                document.getElementById('ui-balance').innerText = state.user.balance.toFixed(2);
-                document.getElementById('ui-invested').innerText = state.user.invested.toFixed(2);
-                document.getElementById('ui-earnings').innerText = state.user.earnings.toFixed(2);
-
-                // Activar botones
-                document.getElementById('btn-deposit').disabled = false;
-                document.getElementById('btn-deposit').classList.remove('opacity-50', 'cursor-not-allowed');
-                
-                document.getElementById('btn-withdraw').disabled = false;
-                document.getElementById('btn-withdraw').classList.remove('opacity-50', 'cursor-not-allowed');
-
-                if(state.user.verified) {
-                    document.getElementById('btn-kyc').style.display = 'none';
-                    document.getElementById('kyc-status').classList.remove('hidden');
-                    document.getElementById('kyc-status').style.display = 'inline';
-                }
-                
-                renderInvestments();
-            }
-        }
-
-        // 6. Funciones de Inversion
-        function startInvest(id) {
-            if(!state.user) {
-                openModal('auth-modal');
-                return;
-            }
-            selectedPlanId = id;
-            document.getElementById('inv-min').innerText = plansConfig[id].min;
-            openModal('invest-modal');
-        }
-
-        function doInvest() {
-            var amount = parseFloat(document.getElementById('inv-amount').value);
-            var plan = plansConfig[selectedPlanId];
-            
-            if(amount > state.user.balance) { alert("Saldo insuficiente"); return; }
-            if(amount < plan.min) { alert("Mínimo " + plan.min); return; }
-
-            state.user.balance -= amount;
-            state.user.invested += amount;
-            state.user.investments.push({ planId: selectedPlanId, amount: amount, daysLeft: plan.days, dailyReturn: amount * plan.rate });
-            
-            saveUser();
-            alert("Inversión realizada con éxito");
-            closeModal('invest-modal');
-            renderUserUI();
-        }
-
-        // 7. Depositos y Retiros
-        function doDeposit() {
-            var v = parseFloat(document.getElementById('dep-amount').value);
-            if(!v) return;
-            state.user.balance += v;
-            saveUser();
-            alert("Depósito simulado exitoso");
-            closeModal('deposit-modal');
-            renderUserUI();
-        }
-        
-        function tryWithdraw() {
-            if(!state.user.verified) { alert("Debes verificar tu identidad (KYC) primero"); return; }
-            openModal('withdraw-modal');
-        }
-
-        function doWithdraw() {
-            var v = parseFloat(document.getElementById('wd-amount').value);
-            if(v > state.user.balance) { alert("Saldo insuficiente"); return; }
-            state.user.balance -= v;
-            saveUser();
-            alert("Retiro solicitado");
-            closeModal('withdraw-modal');
-            renderUserUI();
-        }
-
-        // 8. Utilidades
-        function processKYC() {
-            if(!state.user) return;
-            state.user.verified = true;
-            saveUser();
-            alert("¡KYC Aprobado!");
-            closeModal('kyc-modal');
-            renderUserUI();
-        }
-        
-        function simulateDay() {
-            if(!state.user || state.user.investments.length === 0) { alert("No tienes inversiones activas"); return; }
-            var profit = 0;
-            state.user.investments.forEach(function(inv) {
-                if(inv.daysLeft > 0) { profit += inv.dailyReturn; inv.daysLeft--; }
-            });
-            state.user.balance += profit;
-            state.user.earnings += profit;
-            saveUser();
-            alert("Día simulado: Ganaste " + profit.toFixed(2) + " USDT");
-            renderUserUI();
-        }
-
-        function renderInvestments() {
-            var l = document.getElementById('investment-list');
-            if(state.user.investments.length === 0) { l.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-500">Sin inversiones activas.</td></tr>'; return; }
-            l.innerHTML = '';
-            state.user.investments.forEach(function(inv) {
-                l.innerHTML += `<tr><td class="p-2">${plansConfig[inv.planId].name}</td><td class="p-2">${inv.amount}</td><td class="p-2">${inv.daysLeft} días</td></tr>`;
-            });
-        }
-        
-        function openAI() { alert("IA: El mercado es volátil. Diversifica."); }
-        function openCreateAd() { if(!state.user) openModal('auth-modal'); else alert("Función P2P en mantenimiento"); }
-        function toggleAdmin() { document.getElementById('admin-panel').classList.add('hidden'); }
-        function doAdminLogin() { document.getElementById('admin-panel').classList.remove('hidden'); closeModal('admin-login-modal'); }
-
-        function saveUser() { localStorage.setItem('lunaUserFinal', JSON.stringify(state.user)); }
-
-        // Inicialización al cargar la página
-        window.onload = function() {
-            console.log("Sistema Cargado");
-            var saved = localStorage.getItem('lunaUserFinal');
-            if(saved) state.user = JSON.parse(saved);
-            renderUserUI();
-        };
-    </script>
 </head>
 <body class="flex flex-col min-h-screen">
 
+    <!-- Ticker -->
     <div class="ticker-wrap">
-        <div class="ticker">
-            <span class="ticker-item">BTC: $98,200 <span class="price-up">+1.2%</span></span>
-            <span class="ticker-item">ETH: $3,450 <span class="price-up">+0.8%</span></span>
-            <span class="ticker-item">USDT: $1.00 <span class="text-gray-400">0.0%</span></span>
-        </div>
+        <div class="ticker" id="ticker-content">Cargando precios de mercado...</div>
     </div>
 
+    <!-- Header -->
     <header class="header-bg text-white shadow-lg z-40">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
             <div class="flex items-center mb-4 md:mb-0 cursor-pointer" onclick="location.reload()">
-                <h1 class="text-3xl font-bold tracking-tighter text-yellow-400">LUNA</h1>
+                <svg class="w-10 h-10 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" stroke="#10B981" /> 
+                </svg>
+                <h1 class="text-3xl font-bold tracking-tighter">LUNA</h1>
             </div>
             
             <nav class="flex flex-wrap justify-center gap-4 items-center">
-                <button onclick="openModal('admin-login-modal')" class="text-gray-400 hover:text-white text-xl">🔒</button>
+                <button onclick="openModal('admin-login-modal')" class="text-gray-400 hover:text-white relative" title="Acceso Administrativo">
+                    🔒 <span id="admin-badge" class="hidden absolute -top-2 -right-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">0</span>
+                </button>
+                
                 <button onclick="scrollToId('planes')" class="hover:text-yellow-400 font-medium text-sm">Planes</button>
                 <button onclick="scrollToId('account')" class="hover:text-yellow-400 font-medium text-sm">Mi Cuenta</button>
+                <button onclick="scrollToId('p2p')" class="text-green-400 hover:text-green-300 font-bold text-sm border border-green-500 px-2 py-1 rounded">P2P Global</button>
                 
                 <button id="btn-auth" onclick="openModal('auth-modal')" class="bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded shadow text-sm transition">
                     Cuenta / Registro
                 </button>
-                 <div id="user-info-display" class="hidden text-right" style="display: none;">
-                    <p class="text-xs text-gray-400">Hola,</p>
-                    <p class="font-bold text-sm" id="nav-username">Usuario</p>
-                </div>
             </nav>
         </div>
     </header>
 
-    <div id="admin-panel" class="hidden bg-gray-100 min-h-screen border-b-4 border-red-500 shadow-inner absolute top-0 left-0 w-full z-50" style="display: none;">
+    <!-- VISTA DE ADMINISTRADOR -->
+    <div id="admin-panel" class="hidden bg-gray-100 min-h-screen border-b-4 border-red-500 shadow-inner absolute top-0 left-0 w-full z-50">
         <div class="bg-gray-900 text-white p-4 flex justify-between items-center sticky top-0">
-            <h3 class="text-xl font-bold flex items-center gap-2">Panel Admin</h3>
-            <button onclick="toggleAdmin()" class="text-red-400 font-bold hover:text-red-300 text-sm">Cerrar</button>
+            <h3 class="text-xl font-bold flex items-center gap-2">👮 LUNA Admin Suite</h3>
+            <div class="flex gap-4 items-center">
+                <span class="text-xs text-gray-400">Admin: adrianrodrigueza00</span>
+                <button onclick="toggleAdmin()" class="text-red-400 font-bold hover:text-red-300 text-sm">Cerrar Sesión Admin</button>
+            </div>
         </div>
-        <div class="p-6">
-            <h2 class="text-2xl font-bold mb-4">Estadísticas</h2>
-            <div class="bg-white p-4 rounded shadow"><p>Usuarios: 1,240</p></div>
-        </div>
-    </div>
 
-    <main class="flex-grow max-w-7xl mx-auto px-4 py-8 w-full">
-        <section class="text-center mb-16 bg-white p-8 rounded-2xl shadow-xl relative overflow-hidden">
-            <h2 class="text-4xl md:text-6xl font-extrabold text-slate-900 mb-4">Inversiones <span class="text-yellow-500">To The Moon</span> 🚀</h2>
-            <p class="text-lg text-gray-600 mb-8">Plataforma segura de inversión USDT.</p>
-        </section>
-
-        <section id="planes" class="mb-16">
-            <h3 class="text-3xl font-bold text-center text-slate-800 mb-10">Planes de Inversión</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-white rounded-xl shadow-lg p-6 border-t-4 border-blue-500">
-                    <h4 class="text-xl font-bold mb-2">Inicial</h4>
-                    <div class="text-3xl font-extrabold text-gray-800 mb-4">1.0% <span class="text-sm font-normal">/día</span></div>
-                    <ul class="text-sm text-gray-600 space-y-2 mb-6"><li>⏱️ 15 Días</li><li>💰 Min: 2 USDT</li></ul>
-                    <button onclick="startInvest(1)" class="w-full bg-slate-900 text-white font-bold py-2 rounded hover:bg-slate-800">Elegir Plan</button>
+        <div class="max-w-7xl mx-auto p-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div class="bg-white p-4 rounded shadow border-l-4 border-blue-500">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Usuarios</p>
+                    <p class="text-2xl font-bold" id="adm-stats-users">0</p>
                 </div>
-                <div class="bg-white rounded-xl shadow-lg p-6 border-t-4 border-purple-500">
-                    <h4 class="text-xl font-bold mb-2">Avanzado</h4>
-                    <div class="text-3xl font-extrabold text-gray-800 mb-4">1.5% <span class="text-sm font-normal">/día</span></div>
-                    <ul class="text-sm text-gray-600 space-y-2 mb-6"><li>⏱️ 10 Días</li><li>💰 Min: 15 USDT</li></ul>
-                    <button onclick="startInvest(2)" class="w-full bg-slate-900 text-white font-bold py-2 rounded hover:bg-slate-800">Elegir Plan</button>
+                <div class="bg-white p-4 rounded shadow border-l-4 border-yellow-500">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Pendientes</p>
+                    <p class="text-2xl font-bold text-yellow-600" id="adm-stats-pending">0</p>
                 </div>
-                <div class="bg-white rounded-xl shadow-lg p-6 border-t-4 border-yellow-500">
-                    <h4 class="text-xl font-bold mb-2">VIP</h4>
-                    <div class="text-3xl font-extrabold text-gray-800 mb-4">2.0% <span class="text-sm font-normal">/día</span></div>
-                    <ul class="text-sm text-gray-600 space-y-2 mb-6"><li>⏱️ 7 Días</li><li>💰 Min: 50 USDT</li></ul>
-                    <button onclick="startInvest(3)" class="w-full bg-slate-900 text-white font-bold py-2 rounded hover:bg-slate-800">Elegir Plan</button>
-                </div>
-            </div>
-        </section>
-
-        <section id="account" class="mb-16 bg-white p-6 rounded-2xl shadow-lg">
-            <div class="flex justify-between items-center border-b pb-4 mb-6">
-                <h3 class="text-2xl font-bold text-gray-900">Panel de Usuario</h3>
-                <button onclick="openAI()" class="bg-black text-white px-4 py-2 rounded-full text-xs font-bold shadow">✨ IA Advisor</button>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <div class="bg-blue-50 p-4 rounded-xl"><p class="text-xs font-bold text-blue-600 uppercase">Disponible</p><p class="text-2xl font-extrabold text-gray-800"><span id="ui-balance">0.00</span> USDT</p></div>
-                <div class="bg-purple-50 p-4 rounded-xl"><p class="text-xs font-bold text-purple-600 uppercase">Invertido</p><p class="text-2xl font-extrabold text-gray-800"><span id="ui-invested">0.00</span> USDT</p></div>
-                <div class="bg-green-50 p-4 rounded-xl"><p class="text-xs font-bold text-green-600 uppercase">Ganancias</p><p class="text-2xl font-extrabold text-gray-800"><span id="ui-earnings">0.00</span> USDT</p></div>
-                <div class="bg-gray-100 p-4 rounded-xl text-center flex flex-col justify-center">
-                        <button onclick="openModal('kyc-modal')" id="btn-kyc" class="w-full bg-red-500 text-white text-xs font-bold py-1 px-2 rounded hover:bg-red-600">Verificar ID (KYC)</button>
-                        <span id="kyc-status" class="hidden text-green-600 font-bold text-xs" style="display:none;">Verificado ✅</span>
+                <div class="bg-white p-4 rounded shadow border-l-4 border-green-500">
+                    <p class="text-xs font-bold text-gray-500 uppercase">Capital Total</p>
+                    <p class="text-2xl font-bold text-green-600" id="adm-stats-capital">$0.00</p>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                <button id="btn-deposit" onclick="openModal('deposit-modal')" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg opacity-50 cursor-not-allowed" disabled>Depositar</button>
-                <button id="btn-withdraw" onclick="tryWithdraw()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg opacity-50 cursor-not-allowed" disabled>Retirar</button>
-                <button onclick="simulateDay()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg">Simular 1 Día</button>
+            <!-- Configuración de Planes -->
+            <div class="bg-white p-6 rounded shadow mb-8">
+                <h4 class="font-bold text-gray-800 mb-4 border-b pb-2">⚙️ Configuración de Planes</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="admin-plans-config">
+                    <!-- JS Generated -->
+                </div>
+                <button onclick="savePlanChanges()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full md:w-auto text-sm font-bold">Guardar Cambios</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                <div class="bg-white p-3 rounded shadow">
+                    <h4 class="font-bold text-gray-700 mb-2 border-b pb-1">KYC</h4>
+                    <div id="list-kyc" class="space-y-2 max-h-60 overflow-y-auto"></div>
+                </div>
+                <div class="bg-white p-3 rounded shadow">
+                    <h4 class="font-bold text-gray-700 mb-2 border-b pb-1">Depósitos</h4>
+                    <div id="list-deposits" class="space-y-2 max-h-60 overflow-y-auto"></div>
+                </div>
+                <div class="bg-white p-3 rounded shadow">
+                    <h4 class="font-bold text-gray-700 mb-2 border-b pb-1">Retiros</h4>
+                    <div id="list-withdraws" class="space-y-2 max-h-60 overflow-y-auto"></div>
+                </div>
+                <div class="bg-white p-3 rounded shadow">
+                    <h4 class="font-bold text-green-800 mb-2 border-b pb-1">P2P / Anuncios</h4>
+                    <div id="list-p2p" class="space-y-2 max-h-60 overflow-y-auto"></div>
+                </div>
             </div>
             
-            <h4 class="text-lg font-bold text-gray-800 mb-4">Inversiones Activas</h4>
-            <div class="bg-white border rounded-lg p-4">
-                <table class="w-full text-sm text-left"><thead class="bg-gray-50"><tr><th>Plan</th><th>Monto</th><th>Estado</th></tr></thead>
-                <tbody id="investment-list"><tr><td colspan="3" class="text-center py-4 text-gray-500">Sin inversiones activas.</td></tr></tbody></table>
+            <div class="mt-8 bg-white p-4 rounded shadow">
+                 <h4 class="font-bold text-gray-800 mb-4">Base de Datos</h4>
+                 <div class="overflow-x-auto">
+                     <table class="w-full text-xs text-left">
+                         <thead class="bg-gray-100"><tr><th class="p-2">ID</th><th class="p-2">Nombre</th><th class="p-2">Email</th><th class="p-2">Saldo</th><th class="p-2">Verif.</th></tr></thead>
+                         <tbody id="adm-users-table"></tbody>
+                     </table>
+                 </div>
             </div>
-        </section>
-    </main>
-
-    <footer class="bg-gray-900 text-white py-8 text-center">
-        <p class="text-xs text-gray-500 mb-2">&copy; 2024 LUNA Investment.</p>
-    </footer>
-
-    <div id="auth-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50" style="display: none;">
-        <div class="bg-white p-6 rounded-xl w-full max-w-sm">
-            <h4 class="text-2xl font-bold mb-4">Registro</h4>
-            <input id="reg-name" type="text" placeholder="Tu Nombre" class="w-full border p-2 rounded mb-2">
-            <button onclick="doLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded mb-2">Entrar</button>
-            <button onclick="closeModal('auth-modal')" class="w-full text-gray-500">Cancelar</button>
         </div>
     </div>
+
+    <!-- VISTA DE USUARIO -->
+    <div id="user-view" class="flex flex-col flex-grow w-full">
+        <main class="flex-grow max-w-7xl mx-auto px-4 py-8 w-full">
+            
+            <!-- Hero -->
+            <section class="text-center mb-16 bg-white p-8 rounded-2xl shadow-xl relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-yellow-400 to-orange-500"></div>
+                <h2 class="text-4xl md:text-6xl font-extrabold text-slate-900 mb-4">Inversiones <span class="text-yellow-500">To The Moon</span> 🚀</h2>
+                <p class="text-lg text-gray-600 mb-8">Rentabilidad diaria en USDT (BEP20).</p>
+                <div class="inline-block bg-blue-50 text-blue-800 px-4 py-2 rounded-lg font-semibold border-l-4 border-blue-500">
+                    🌐 Acceso Global | Sin restricciones
+                </div>
+            </section>
+
+            <!-- Planes -->
+            <section id="planes" class="mb-16">
+                <h3 class="text-3xl font-bold text-center text-slate-800 mb-10">Planes de Inversión</h3>
+                <div id="plans-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Rendered by JS -->
+                </div>
+            </section>
+
+            <!-- P2P Lunar -->
+            <section id="p2p" class="mb-16 bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-900 flex items-center gap-2">♻️ Mercado P2P Global</h3>
+                        <p class="text-sm text-gray-500">Compra y venta segura con depósito de garantía (10 USDT).</p>
+                    </div>
+                    <div class="flex gap-2 mt-4 md:mt-0 items-center flex-wrap">
+                        <select id="p2p-currency-filter" onchange="renderP2P()" class="border rounded px-2 py-1 text-sm">
+                            <option value="ALL">Todas las Monedas</option>
+                            <option value="USD">USD</option><option value="EUR">EUR</option><option value="ARS">ARS</option>
+                            <option value="VES">VES</option><option value="COP">COP</option><option value="MXN">MXN</option>
+                            <option value="PEN">PEN</option><option value="CLP">CLP</option><option value="BRL">BRL</option>
+                            <option value="CNY">CNY</option><option value="RUB">RUB</option><option value="INR">INR</option>
+                        </select>
+                        <button onclick="setP2PMode('buy')" id="btn-p2p-buy" class="px-3 py-1 bg-green-600 text-white font-bold rounded text-sm">Comprar</button>
+                        <button onclick="setP2PMode('sell')" id="btn-p2p-sell" class="px-3 py-1 bg-gray-200 text-gray-700 font-bold rounded text-sm">Vender</button>
+                        <button onclick="openCreateAd()" class="px-3 py-1 border border-gray-300 text-gray-600 font-bold rounded hover:bg-gray-50 text-sm">+ Publicar Anuncio</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-100 text-gray-600 uppercase">
+                            <tr>
+                                <th class="px-4 py-3">Comerciante</th>
+                                <th class="px-4 py-3">Precio</th>
+                                <th class="px-4 py-3">Límites</th>
+                                <th class="px-4 py-3">Moneda</th>
+                                <th class="px-4 py-3 text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="p2p-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Mi Cuenta -->
+            <section id="account" class="mb-16 bg-white p-6 rounded-2xl shadow-lg">
+                <div class="flex justify-between items-center border-b pb-4 mb-6">
+                    <h3 class="text-2xl font-bold text-gray-900">Panel de Usuario</h3>
+                    <button onclick="openAI()" class="bg-gradient-to-r from-gray-800 to-black text-white px-4 py-2 rounded-full text-xs font-bold shadow hover:scale-105 transition">✨ IA Advisor</button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div class="bg-blue-50 p-4 rounded-xl"><p class="text-xs font-bold text-blue-600 uppercase">Disponible</p><p class="text-2xl font-extrabold text-gray-800"><span id="ui-balance">0.00</span> <span class="text-xs">USDT</span></p></div>
+                    <div class="bg-purple-50 p-4 rounded-xl"><p class="text-xs font-bold text-purple-600 uppercase">Invertido</p><p class="text-2xl font-extrabold text-gray-800"><span id="ui-invested">0.00</span> <span class="text-xs">USDT</span></p></div>
+                    <div class="bg-green-50 p-4 rounded-xl"><p class="text-xs font-bold text-green-600 uppercase">Ganancias</p><p class="text-2xl font-extrabold text-gray-800"><span id="ui-earnings">0.00</span> <span class="text-xs">USDT</span></p></div>
+                    <div class="bg-gray-100 p-4 rounded-xl text-center flex flex-col justify-center">
+                        <div id="ui-status-content">
+                            <p class="text-xs font-bold text-gray-500 mb-2">Puntos LUNA/USDT</p>
+                        </div>
+                        <button onclick="openModal('kyc-modal')" id="btn-kyc" class="hidden mt-2 w-full bg-red-500 text-white text-xs font-bold py-1 px-2 rounded hover:bg-red-600">Verificar ID (KYC)</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                    <button id="btn-deposit" onclick="openModal('deposit-modal')" class="hidden bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">Depositar</button>
+                    <button id="btn-withdraw" onclick="tryWithdraw()" class="hidden bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg">Retirar</button>
+                    <button onclick="simulateDay()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg">Simular 1 Día</button>
+                </div>
+
+                <div id="affiliate-panel" class="hidden bg-yellow-50 border border-yellow-200 p-4 rounded-xl mb-8">
+                    <h4 class="font-bold text-yellow-800 mb-2">🤝 Programa de Afiliados</h4>
+                    <div class="flex flex-col md:flex-row gap-4 items-center">
+                        <div class="flex-grow w-full">
+                            <input type="text" id="ref-link" readonly class="w-full p-2 text-xs border rounded bg-white text-gray-600" value="">
+                        </div>
+                        <div class="text-right whitespace-nowrap">
+                            <span class="text-xs font-bold text-gray-500">Ganancias:</span> 
+                            <span id="ui-affiliate" class="font-bold text-green-600 text-lg">0.00</span> USDT
+                        </div>
+                        <div class="flex gap-1">
+                            <button onclick="simRef(1)" class="bg-gray-200 text-xs px-2 py-1 rounded hover:bg-gray-300">+0.5</button>
+                            <button onclick="simRef(2)" class="bg-gray-200 text-xs px-2 py-1 rounded hover:bg-gray-300">+1.0</button>
+                            <button onclick="simRef(3)" class="bg-gray-200 text-xs px-2 py-1 rounded hover:bg-gray-300">+1.5</button>
+                        </div>
+                    </div>
+                </div>
+
+                <h4 class="text-lg font-bold text-gray-800 mb-4">Inversiones Activas</h4>
+                <div class="overflow-x-auto bg-white border rounded-lg">
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="bg-gray-50 text-gray-700 uppercase">
+                            <tr>
+                                <th class="px-6 py-3">Plan</th>
+                                <th class="px-6 py-3">Monto</th>
+                                <th class="px-6 py-3">Días</th>
+                                <th class="px-6 py-3 text-right">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="investment-list">
+                            <tr><td colspan="4" class="px-6 py-4 text-center italic">Sin inversiones activas.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <!-- Reseñas -->
+            <section id="resenas" class="mb-16">
+                <h3 class="text-2xl font-bold text-center mb-6">Opiniones</h3>
+                <div class="bg-white p-6 rounded-xl shadow mb-6 max-w-2xl mx-auto">
+                    <input type="text" id="review-name" class="w-full border p-2 rounded mb-2" placeholder="Tu Nombre">
+                    <div class="flex justify-end mb-2">
+                        <div class="star-rating">
+                            <input type="radio" id="s5" name="r" value="5" onclick="rate(5)"><label for="s5"></label>
+                            <input type="radio" id="s4" name="r" value="4" onclick="rate(4)"><label for="s4"></label>
+                            <input type="radio" id="s3" name="r" value="3" onclick="rate(3)"><label for="s3"></label>
+                            <input type="radio" id="s2" name="r" value="2" onclick="rate(2)"><label for="s2"></label>
+                            <input type="radio" id="s1" name="r" value="1" onclick="rate(1)"><label for="s1"></label>
+                        </div>
+                    </div>
+                    <textarea id="review-msg" class="w-full border p-2 rounded mb-2" rows="2" placeholder="Comentario..."></textarea>
+                    <button onclick="addReview()" class="w-full bg-blue-600 text-white font-bold py-2 rounded">Publicar</button>
+                </div>
+                <div id="reviews-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+            </section>
+        </main>
+
+        <footer class="bg-gray-900 text-white py-8 text-center">
+            <div class="flex justify-center space-x-6 mb-4">
+                <a href="#" class="hover:text-blue-400">Twitter</a>
+                <a href="#" class="hover:text-blue-600">Facebook</a>
+                <a href="#" class="hover:text-red-500">YouTube</a>
+                <a href="#" class="hover:text-blue-300">Telegram</a>
+            </div>
+            <p class="text-xs text-gray-500 mb-2">&copy; 2024 LUNA Investment. Simulación Educativa.</p>
+            <a href="javascript:void(0)" onclick="openModal('admin-login-modal')" class="text-[10px] text-gray-700 hover:text-gray-500">Admin Access</a>
+        </footer>
+
+        <!-- Support Button -->
+        <a href="https://wa.me/message/HXFFSJ2DYQE3D1" target="_blank" class="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-2xl chat-anim hover:bg-blue-700 z-50 flex items-center gap-2">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+            <span class="font-bold text-sm">Soporte</span>
+        </a>
+    </div>
+
+    <!-- MODALS -->
     
-    <div id="invest-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50" style="display: none;">
-        <div class="bg-white p-6 rounded-xl w-full max-w-sm">
-            <h4 class="text-xl font-bold mb-2">Invertir</h4>
-            <p class="text-sm text-gray-500 mb-4">Monto mínimo: <span id="inv-min"></span> USDT</p>
-            <input id="inv-amount" type="number" class="w-full border p-2 rounded mb-4" placeholder="Cantidad a invertir">
-            <button onclick="doInvest()" class="w-full bg-blue-600 text-white rounded py-2">Confirmar</button>
-            <button onclick="closeModal('invest-modal')" class="w-full mt-2 text-gray-500">Cancelar</button>
-        </div>
-    </div>
+    <!-- Auth -->
+    <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h4 class="text-2xl font-bold mb-4">Cuenta / Registro</h4><input id="reg-name" type="text" placeholder="Nombre" class="w-full border p-2 rounded mb-2"><input id="reg-last" type="text" placeholder="Apellido" class="w-full border p-2 rounded mb-2"><input id="reg-email" type="email" placeholder="Gmail" class="w-full border p-2 rounded mb-4"><button onclick="doLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded mb-2">Registrar / Entrar</button><button onclick="closeModal('auth-modal')" class="w-full text-gray-500">Cancelar</button></div></div>
+    
+    <!-- Admin Login -->
+    <div id="admin-login-modal" class="fixed inset-0 bg-gray-900 bg-opacity-90 hidden items-center justify-center z-50"><div class="bg-white p-8 rounded-xl w-full max-w-sm shadow-2xl border-t-4 border-red-600"><h4 class="text-2xl font-bold mb-2 text-red-600 text-center">Acceso Admin</h4><input id="adm-user" type="text" placeholder="Usuario (Admin)" class="w-full border p-3 rounded mb-3 bg-gray-50"><input id="adm-email" type="email" placeholder="Email (adrianrodrigueza00@gmail.com)" class="w-full border p-3 rounded mb-6 bg-gray-50"><button onclick="doAdminLogin()" class="w-full bg-red-600 text-white font-bold py-3 rounded hover:bg-red-700 transition">Entrar al Panel</button><button onclick="closeModal('admin-login-modal')" class="w-full text-gray-400 text-sm mt-4 hover:underline text-center">Volver</button></div></div>
 
-    <div id="deposit-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50" style="display: none;">
-        <div class="bg-white p-6 rounded-xl w-full max-w-sm">
-            <h4 class="text-xl font-bold mb-4">Depositar</h4>
-            <div class="bg-gray-100 p-2 rounded mb-4 text-center text-xs break-all"><span class="font-bold block mb-1">WALLET EMPRESA:</span>0xc0bd02951cc4858bd1f759ddd10f632a69d51bf8</div>
-            <input id="dep-amount" type="number" placeholder="Cantidad" class="w-full border p-2 rounded mb-4">
-            <button onclick="doDeposit()" class="w-full bg-green-600 text-white rounded py-2">Confirmar Envío</button>
-            <button onclick="closeModal('deposit-modal')" class="w-full mt-2 text-gray-500">Cancelar</button>
-        </div>
-    </div>
+    <!-- Deposit -->
+    <div id="deposit-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h4 class="text-xl font-bold mb-4">Depositar Fondos</h4><div class="bg-gray-100 p-2 rounded mb-4 text-center text-xs break-all"><span class="font-bold block mb-1">WALLET EMPRESA (BEP20):</span><span id="company-wallet">0xc0bd02951cc4858bd1f759ddd10f632a69d51bf8</span></div><input id="dep-id" type="text" placeholder="TU ID (6 Digitos)" class="w-full border p-2 rounded mb-2 uppercase"><input id="dep-amount" type="number" placeholder="Monto (Min 2 USDT)" class="w-full border p-2 rounded mb-4">
+    <label class="block text-sm font-medium text-gray-700 mb-1">Comprobante de Pago</label><input type="file" id="deposit-proof" accept="image/*" class="w-full border border-gray-300 rounded-lg p-2 mb-4 text-xs file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"><div class="flex gap-2"><button onclick="closeModal('deposit-modal')" class="flex-1 bg-gray-200 rounded py-2">Cancelar</button><button onclick="doDeposit()" class="flex-1 bg-green-600 text-white rounded py-2">Enviar</button></div></div></div>
 
-    <div id="withdraw-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50" style="display: none;">
-        <div class="bg-white p-6 rounded-xl w-full max-w-sm">
-            <h4 class="text-xl font-bold mb-4">Retirar</h4>
-            <input id="wd-amount" type="number" placeholder="Cantidad a retirar" class="w-full border p-2 rounded mb-4">
-            <button onclick="doWithdraw()" class="w-full bg-red-500 text-white rounded py-2">Solicitar Retiro</button>
-            <button onclick="closeModal('withdraw-modal')" class="w-full mt-2 text-gray-500">Cancelar</button>
-        </div>
-    </div>
+    <!-- Withdraw -->
+    <div id="withdraw-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h4 class="text-xl font-bold mb-4">Retirar Fondos</h4><p class="mb-4 text-sm">Disponible: <span id="wd-avail">0</span> USDT</p><input id="wd-amount" type="number" placeholder="Monto (Min 5 USDT)" class="w-full border p-2 rounded mb-2"><input id="wd-id" type="text" placeholder="TU ID" class="w-full border p-2 rounded mb-2 uppercase"><input id="wd-wallet" type="text" placeholder="Tu Wallet BEP20" class="w-full border p-2 rounded mb-1"><p class="text-xs text-red-500 text-right mb-4">Fee: 3%</p><div class="flex gap-2"><button onclick="closeModal('withdraw-modal')" class="flex-1 bg-gray-200 rounded py-2">Cancelar</button><button onclick="doWithdraw()" class="flex-1 bg-red-500 text-white rounded py-2">Retirar</button></div></div></div>
 
-    <div id="kyc-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50" style="display: none;">
-        <div class="bg-white p-6 rounded-xl w-full max-w-sm">
-            <h4 class="text-xl font-bold mb-4">Verificar Identidad</h4>
-            <button onclick="processKYC()" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg">Enviar Documentos</button>
-            <button onclick="closeModal('kyc-modal')" class="w-full text-gray-500 mt-2">Cerrar</button>
-        </div>
-    </div>
+    <!-- Invest -->
+    <div id="invest-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h4 id="invest-modal-title" class="text-xl font-bold mb-2">Invertir</h4><p class="text-sm text-gray-500 mb-4">Capital bloqueado por el periodo.</p><label class="text-xs font-bold block mb-1">Monto (Min: <span id="inv-min"></span>)</label><input id="inv-amount" type="number" class="w-full border p-2 rounded mb-4"><div class="flex gap-2"><button onclick="closeModal('invest-modal')" class="flex-1 bg-gray-200 rounded py-2">Cancelar</button><button onclick="doInvest()" class="flex-1 bg-blue-600 text-white rounded py-2">Confirmar</button></div></div></div>
+    
+    <!-- P2P Trade -->
+    <div id="p2p-trade-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-md"><h4 class="text-xl font-bold mb-2">Orden P2P</h4><input type="hidden" id="p2p-oid"><p class="mb-4 text-sm">Tasa: <span id="p2p-rate" class="font-bold"></span></p><input id="p2p-amt" type="number" placeholder="Cantidad USDT" class="w-full border p-2 rounded mb-4">
+    <label class="block text-sm font-medium text-gray-700 mb-1">Comprobante</label><input type="file" id="p2p-proof" accept="image/*" class="w-full border border-gray-300 rounded-lg p-2 mb-4 text-xs file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+    <div class="flex gap-2"><button onclick="closeModal('p2p-trade-modal')" class="flex-1 bg-gray-200 rounded py-2">Cancelar</button><button onclick="doP2PTrade()" class="flex-1 bg-green-600 text-white rounded py-2">Confirmar</button></div></div></div>
 
-    <div id="admin-login-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-90 items-center justify-center z-50" style="display: none;">
-        <div class="bg-white p-8 rounded-xl w-full max-w-sm border-t-4 border-red-600">
-            <h4 class="text-2xl font-bold mb-2 text-red-600 text-center">Admin Access</h4>
-            <button onclick="doAdminLogin()" class="w-full bg-red-600 text-white font-bold py-3 rounded hover:bg-red-700 transition">Entrar al Panel</button>
-            <button onclick="closeModal('admin-login-modal')" class="w-full text-gray-400 text-sm mt-4 text-center">Cancelar</button>
-        </div>
-    </div>
+    <!-- P2P Create -->
+    <div id="p2p-create-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h4 class="text-xl font-bold mb-4">Crear Anuncio</h4>
+    <div class="bg-yellow-50 p-2 rounded mb-4 border border-yellow-200"><p class="text-xs text-yellow-800">⚠️ <strong>Requisito:</strong> Se bloquearán 10 USDT como depósito de seguridad.</p></div>
+    <select id="ad-type" class="w-full border p-2 rounded mb-2"><option value="sell">Vender USDT</option><option value="buy">Comprar USDT</option></select>
+    <select id="ad-fiat" class="w-full border p-2 rounded mb-2"><option value="USD">USD</option><option value="EUR">EUR</option><option value="ARS">ARS</option><option value="VES">VES</option><option value="COP">COP</option><option value="MXN">MXN</option><option value="BRL">BRL</option><option value="PEN">PEN</option><option value="CLP">CLP</option><option value="CNY">CNY</option><option value="RUB">RUB</option><option value="INR">INR</option></select>
+    <input id="ad-price" type="number" placeholder="Precio (USD)" class="w-full border p-2 rounded mb-2"><input id="ad-limit" type="number" placeholder="Total USDT" class="w-full border p-2 rounded mb-2"><input id="ad-method" type="text" placeholder="Método Pago" class="w-full border p-2 rounded mb-4"><div class="flex gap-2"><button onclick="closeModal('p2p-create-modal')" class="flex-1 bg-gray-200 rounded py-2">Cancelar</button><button onclick="doCreateAd()" class="flex-1 bg-blue-600 text-white rounded py-2">Publicar</button></div></div></div>
+    
+    <!-- KYC -->
+    <div id="kyc-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h4 class="text-xl font-bold mb-4">Verificación KYC</h4><div id="kyc-content-area"><p class="text-sm text-gray-600 mb-4">Solicitud de verificación para habilitar retiros.</p><button onclick="processKYC()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">Solicitar Verificación</button></div><div id="kyc-success-area" class="hidden text-center py-4 font-bold text-green-600">¡Verificado!</div><button onclick="closeModal('kyc-modal')" class="w-full text-gray-500 mt-2">Cerrar</button></div></div>
+    
+    <!-- AI -->
+    <div id="ai-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-md"><h4 class="text-xl font-bold mb-4">Asistente IA</h4><div id="ai-input"><select id="ai-r" class="w-full border p-2 rounded mb-2"><option>Bajo</option><option>Medio</option><option>Alto</option></select><button onclick="processAI()" class="w-full bg-slate-800 text-white font-bold py-2 rounded">Consultar</button></div><p id="ai-out" class="hidden mt-4 p-3 bg-gray-100 text-sm rounded"></p><button onclick="closeModal('ai-modal')" class="w-full text-gray-500 mt-4 text-sm">Cerrar</button></div></div>
 
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-gray-800 text-white px-6 py-3 rounded shadow-xl translate-y-24 opacity-0 transition-all duration-300 z-50 font-semibold text-sm"></div>
+
+    <script>
+        /* --- CONFIGURACIÓN GLOBAL --- */
+        let plansConfig = {
+            1: { name: "Inicial", min: 2, days: 15, rate: 0.01, color: '#2563eb' },
+            2: { name: "Avanzado", min: 15, days: 10, rate: 0.015, color: '#9333ea' },
+            3: { name: "VIP", min: 50, days: 7, rate: 0.02, color: '#eab308' }
+        };
+        // CONFIGURA TU EMAIL AQUÍ
+        const ADMIN_EMAIL = "adrianrodrigueza00@gmail.com";
+        const apiKey = "";
+
+        /* --- ESTADO --- */
+        let state = {
+            user: null, 
+            usersDB: [],
+            requests: { kyc:[], deposits:[], withdrawals:[], p2p:[] },
+            p2pAds: [
+                {id:1, user:'TraderPro', type:'sell', price:1.01, total:500, method:'Banco'},
+                {id:2, user:'CryptoKing', type:'buy', price:0.99, total:1000, method:'Pago Movil'}
+            ],
+            reviews: [
+                {name:'Ana', rating:5, text:'Excelente plataforma.'},
+                {name:'Luis', rating:4, text:'Pagos rápidos.'}
+            ]
+        };
+
+        let selectedPlanId = null;
+        let starRating = 0;
+        let p2pMode = 'buy';
+        let chartInstances = {};
+
+        /* --- FUNCIONES PRINCIPALES --- */
+
+        window.onload = function() {
+            const saved = localStorage.getItem('lunaFullState');
+            if(saved) {
+                const parsed = JSON.parse(saved);
+                state = { ...state, ...parsed };
+                if(parsed.plansConfig) plansConfig = parsed.plansConfig;
+            }
+            
+            renderTicker();
+            setInterval(renderTicker, 10000);
+            renderUserUI(); 
+        };
+
+        function save() {
+            const dataToSave = { ...state, plansConfig };
+            localStorage.setItem('lunaFullState', JSON.stringify(dataToSave));
+            renderUserUI();
+            if(!document.getElementById('admin-panel').classList.contains('hidden')) renderAdminDashboard();
+        }
+
+        function toast(msg, type='neutral') {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.className = `fixed bottom-5 right-5 px-6 py-3 rounded shadow-xl transition-all duration-300 z-50 text-white translate-y-0 opacity-100 ${type==='success'?'bg-green-600':type==='error'?'bg-red-500':'bg-gray-800'}`;
+            setTimeout(() => { t.classList.add('translate-y-24', 'opacity-0'); }, 3000);
+        }
+
+        function sendMail(subject, body) {
+            window.open(`mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+        }
+
+        // --- GLOBAL BINDINGS ---
+        window.openModal = function(id) { document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex'); }
+        window.closeModal = function(id) { document.getElementById(id).classList.add('hidden'); document.getElementById(id).classList.remove('flex'); }
+        window.scrollToId = function(id) { document.getElementById(id).scrollIntoView({behavior:'smooth'}); }
+        window.setLanguage = function(v) { console.log(v); }
+        
+        // AUTH
+        window.doLogin = function() {
+            const name = document.getElementById('reg-name').value;
+            const last = document.getElementById('reg-last').value;
+            const mail = document.getElementById('reg-email').value;
+            if(!name || !last || !mail) return toast('Faltan datos', 'error');
+            let user = state.usersDB.find(u => u.email === mail);
+            if(!user) {
+                const id = Math.random().toString(36).substring(2,8).toUpperCase();
+                user = { id, name, last, email: mail, verified: false, balance: 0, invested: 0, earnings: 0, luna: 0, investments: [] };
+                state.usersDB.push(user);
+                sendMail("Nuevo Registro", `Nombre: ${name} ${last}\nID: ${id}\nEmail: ${mail}`);
+                toast(`Bienvenido ID: ${id}`, 'success');
+            } else { toast(`Bienvenido de nuevo ${user.name}`, 'success'); }
+            state.user = user; closeModal('auth-modal'); save();
+        }
+        window.logout = function() { state.user = null; save(); toast('Sesión cerrada'); location.reload(); }
+
+        // ADMIN AUTH
+        window.doAdminLogin = function() {
+            const u = document.getElementById('adm-user').value;
+            const e = document.getElementById('adm-email').value;
+            if(u === "Admin" && e === "adrianrodrigueza00@gmail.com") {
+                closeModal('admin-login-modal');
+                document.getElementById('user-view').classList.add('hidden');
+                document.getElementById('admin-panel').classList.remove('hidden');
+                renderAdminDashboard();
+                toast('Bienvenido Admin', 'success');
+            } else { toast('Credenciales incorrectas', 'error'); }
+        }
+        window.toggleAdmin = function() {
+            const panel = document.getElementById('admin-panel');
+            const userView = document.getElementById('user-view');
+            if(panel.classList.contains('hidden')) { panel.classList.add('hidden'); userView.classList.remove('hidden'); } 
+            else { panel.classList.add('hidden'); userView.classList.remove('hidden'); }
+        }
+
+        // USER ACTIONS
+        window.processKYC = function() {
+            if(!state.user) return;
+            state.requests.kyc.push({ id: Date.now(), uid: state.user.id, name: state.user.name, status: 'pending' });
+            sendMail("Solicitud KYC", `User: ${state.user.id}`);
+            toast('Solicitud enviada', 'success'); closeModal('kyc-modal'); save();
+        }
+
+        window.doDeposit = function() {
+            const amt = parseFloat(document.getElementById('deposit-amount').value);
+            const uid = document.getElementById('deposit-user-id').value.toUpperCase();
+            const proof = document.getElementById('deposit-proof').files[0];
+            
+            if(uid !== state.user.id) return toast('ID incorrecto', 'error');
+            if(!amt || amt < 2) return toast('Mínimo 2 USDT', 'error');
+            if(!proof) return toast('Debe subir comprobante', 'error');
+
+            state.requests.deposits.push({ id: Date.now(), uid: state.user.id, amount: amt, status: 'pending' });
+            sendMail("Solicitud Depósito", `ID: ${state.user.id}\nMonto: ${amt} USDT\n(Adjuntar Comprobante)`);
+            toast('Depósito pendiente de aprobación', 'success');
+            closeModal('deposit-modal'); save();
+            document.getElementById('deposit-proof').value = ''; // Reset file input
+        }
+
+        window.doWithdraw = function() {
+            const amt = parseFloat(document.getElementById('withdraw-amount').value);
+            const uid = document.getElementById('withdraw-user-id').value.toUpperCase();
+            const wall = document.getElementById('withdraw-address').value;
+            if(uid !== state.user.id) return toast('ID incorrecto', 'error');
+            if(!wall) return toast('Falta Wallet', 'error');
+            if(amt < 5) return toast('Mínimo 5 USDT', 'error');
+            if(amt > state.user.balance) return toast('Saldo insuficiente', 'error');
+
+            state.balance -= amount; // Lock funds
+            state.pending.withdrawals.push({uid: state.user.id, amount, fee, net: amount-fee, wallet, id: Date.now()});
+            
+            sendMail("Solicitud Retiro", `ID: ${id}\nMonto: ${amount}\nNeto: ${amount-fee}\nWallet: ${wallet}`);
+            closeModal('withdraw-modal');
+            toast('Retiro procesado', 'success');
+            saveData();
+        }
+
+        window.doInvest = function() {
+            const amt = parseFloat(document.getElementById('inv-amount').value);
+            const plan = plansConfig[selectedPlanId];
+            if(amt < plan.min) return toast(`Mínimo ${plan.min} USDT`, 'error');
+            if(amt > state.user.balance) return toast('Saldo insuficiente', 'error');
+
+            const uIdx = state.usersDB.findIndex(u => u.id === state.user.id);
+            state.usersDB[uIdx].balance -= amt;
+            state.usersDB[uIdx].invested += amt;
+            state.usersDB[uIdx].luna += 500;
+            state.usersDB[uIdx].investments.push({ planId: selectedPlanId, amount: amt, daysLeft: plan.days });
+            
+            // Sync session
+            state.user = state.usersDB[uIdx];
+            
+            closeModal('invest-modal');
+            toast('Inversión Exitosa (+500 Puntos)', 'success');
+            save();
+        }
+
+        window.tryWithdraw = function() {
+            if(!state.user.verified) return toast('Requiere KYC', 'error');
+            openModal('withdraw-modal');
+        }
+
+        window.simulateDay = function() {
+            if(!state.user || !state.user.investments.length) return toast('Sin inversiones', 'error');
+            let gain = 0;
+            const uIdx = state.usersDB.findIndex(u => u.id === state.user.id);
+            
+            state.usersDB[uIdx].investments.forEach(inv => {
+                if(inv.daysLeft > 0) {
+                    const profit = inv.amount * plansConfig[inv.planId].rate;
+                    inv.amount += profit; 
+                    inv.daysLeft--;
+                    gain += profit;
+                    state.usersDB[uIdx].earnings += profit;
+                }
+            });
+            state.user = state.usersDB[uIdx];
+            toast(`+${gain.toFixed(2)} USDT`, 'success');
+            save();
+        }
+
+        // ADMIN ACTIONS
+        window.adminApproveKYC = function(reqId) {
+            const idx = state.requests.kyc.findIndex(r => r.id === reqId);
+            if(idx === -1) return;
+            const req = state.requests.kyc[idx];
+            const uIdx = state.usersDB.findIndex(u => u.id === req.uid);
+            if(uIdx !== -1) state.usersDB[uIdx].verified = true;
+            if(state.user && state.user.id === req.uid) state.user.verified = true;
+            state.requests.kyc.splice(idx, 1);
+            save(); renderAdminDashboard();
+        }
+
+        window.adminApproveDeposit = function(reqId) {
+            const idx = state.requests.deposits.findIndex(r => r.id === reqId);
+            if(idx === -1) return;
+            const req = state.requests.deposits[idx];
+            const uIdx = state.usersDB.findIndex(u => u.id === req.uid);
+            if(uIdx !== -1) state.usersDB[uIdx].balance += req.amount;
+            if(state.user && state.user.id === req.uid) state.user.balance += req.amount;
+            state.requests.deposits.splice(idx, 1);
+            save(); renderAdminDashboard();
+        }
+
+        window.adminApproveWithdraw = function(reqId) {
+            const idx = state.requests.withdrawals.findIndex(r => r.id === reqId);
+            if(idx !== -1) state.requests.withdrawals.splice(idx, 1);
+            save(); renderAdminDashboard();
+        }
+
+        window.savePlanChanges = function() {
+            [1,2,3].forEach(pid => {
+                plansConfig[pid].rate = parseFloat(document.getElementById(`plan-${pid}-rate`).value);
+                plansConfig[pid].days = parseInt(document.getElementById(`plan-${pid}-days`).value);
+                plansConfig[pid].min = parseFloat(document.getElementById(`plan-${pid}-min`).value);
+            });
+            toast('Planes actualizados', 'success');
+            save();
+        }
+        window.checkAuthAndVerification = function(action) {
+            if (!state.user) { toast('Debes iniciar sesión', 'error'); openModal('auth-modal'); return; }
+            if (action === 'deposit') { document.getElementById('deposit-user-id').value = ''; document.getElementById('deposit-amount').value = ''; openModal('deposit-modal'); }
+            else if (action === 'withdrawal') { 
+                if (!state.user.verified) { toast('Verificación KYC requerida', 'error'); openModal('kyc-modal'); return; }
+                document.getElementById('withdraw-user-id').value = ''; document.getElementById('withdraw-amount').value = ''; document.getElementById('withdraw-address').value = ''; document.getElementById('withdraw-max').innerText = state.balance.toFixed(2); openModal('withdraw-modal'); 
+            }
+        }
+
+        // P2P
+        window.openCreateAd = function() { if(!state.user) return openModal('auth-modal'); openModal('p2p-create-modal'); }
+        window.doCreateAd = function() {
+            const t=document.getElementById('ad-type').value, p=document.getElementById('ad-price').value, l=document.getElementById('ad-limit').value, m=document.getElementById('ad-method').value, f=document.getElementById('ad-fiat').value;
+            if(!p||!l||!m) return toast('Faltan datos','error');
+            const deposit = 10.00;
+            if(state.user.balance < deposit) return toast(`Saldo insuficiente. Se requieren ${deposit} USDT`, 'error');
+            const uIdx = state.usersDB.findIndex(u=>u.id===state.user.id);
+            state.usersDB[uIdx].balance -= deposit; state.user.balance -= deposit;
+            state.p2pAds.push({id:Date.now(), user:state.user.name, type:t, price:parseFloat(p), total:parseFloat(l), method:m, fiat:f});
+            sendMail("Anuncio P2P", `User: ${state.user.id}, Depósito: 10 USDT`);
+            closeModal('p2p-create-modal'); toast(`Anuncio creado.`, 'success'); save(); renderP2P();
+        }
+        window.setP2PMode = function(m) { p2pMode=m; renderUserUI(); }
+        window.renderP2P = function() {
+            const l=document.getElementById('p2p-table-body'); if(!l) return; l.innerHTML='';
+            const curFilter = document.getElementById('p2p-currency-filter') ? document.getElementById('p2p-currency-filter').value : 'ALL';
+            const typeToShow = p2pMode==='buy'?'sell':'buy';
+            const ads = state.p2pAds.filter(a => a.type === typeToShow && (curFilter === 'ALL' || a.fiat === curFilter));
+            if(!ads.length) { l.innerHTML='<tr><td colspan="5" class="p-4 text-center text-gray-400">No hay ofertas.</td></tr>'; return; }
+            ads.forEach(a => {
+                const btnColor = p2pMode==='buy'?'bg-green-600':'bg-red-500';
+                l.innerHTML+=`<tr class="hover:bg-gray-50 border-b"><td class="p-3 font-bold">${a.user}</td><td class="p-3 text-gray-800 font-bold">${a.price} <span class="text-xs text-gray-500">${a.fiat||'USD'}</span></td><td class="p-3 text-gray-600">${a.total} USDT</td><td class="p-3 text-gray-500">${a.method}</td><td class="p-3 text-right"><button onclick="openTrade(${a.id})" class="${btnColor} text-white px-3 py-1 rounded text-xs font-bold">Operar</button></td></tr>`;
+            });
+        }
+        window.openTrade = function(id) {
+            if(!state.user) return openModal('auth-modal');
+            const ad = state.p2pAds.find(a=>a.id===id);
+            document.getElementById('p2p-offer-id').value=ad.id; document.getElementById('p2p-modal-title').innerText=`${p2pMode==='buy'?'Comprar':'Vender'} a ${ad.user}`; document.getElementById('p2p-modal-rate').innerText=`${ad.price} ${ad.fiat||'USD'}`; openModal('p2p-trade-modal');
+        }
+        window.doP2PTrade = function() {
+            const amount = parseFloat(document.getElementById('p2p-amount').value);
+            const id = parseInt(document.getElementById('p2p-offer-id').value);
+            const ad = state.p2pAds.find(x=>x.id===id);
+            const proof = document.getElementById('p2p-proof').files[0];
+
+            if(!amount || amount <= 0) return toast('Monto inválido', 'error');
+            if(!proof) return toast('Debe subir comprobante', 'error');
+            
+            state.requests.p2p.push({uid:state.user.id, type:p2pMode, amount:amount, partner:ad.user, price:ad.price, id:Date.now()});
+            sendMail("Orden P2P", `Usuario: ${state.user.id}\nTipo: ${p2pMode.toUpperCase()}\nMonto: ${amount} USDT\nContraparte: ${ad.user}`);
+            closeModal('p2p-trade-modal'); toast('Orden P2P enviada a revisión', 'success'); save();
+            document.getElementById('p2p-proof').value = ''; // Reset
+        }
+        window.admP2P = function(i) { 
+            const t = state.requests.p2p[i]; 
+            if (t.type === 'buy') state.balance += t.amount; else if(state.balance >= t.amount) state.balance -= t.amount; 
+            state.requests.p2p.splice(i,1); save(); renderAdminDashboard(); 
+        }
+
+        /* --- RENDERERS --- */
+        function renderUserUI() {
+            const plansCont = document.getElementById('plans-container');
+            if(plansCont) {
+                plansCont.innerHTML = '';
+                [1,2,3].forEach(pid => {
+                    const p = plansConfig[pid];
+                    plansCont.innerHTML += `<div class="bg-white p-6 rounded-2xl shadow-lg border-t-4 flex flex-col" style="border-color: ${p.color}"><h4 class="text-2xl font-bold text-center mb-2">${p.name}</h4><div class="text-center bg-gray-50 p-2 rounded mb-4"><span class="text-4xl font-extrabold" style="color: ${p.color}">${(p.rate*100).toFixed(1)}%</span> <span class="text-sm font-bold text-gray-400 block">DIARIO</span></div><ul class="text-sm text-gray-600 space-y-2 mb-4 flex-grow"><li>✅ Mínimo: ${p.min} USDT</li><li>✅ Duración: ${p.days} Días</li></ul><div class="chart-container mb-4"><canvas id="chart-plan-${pid}"></canvas></div><button onclick="startInvest(${pid})" class="w-full text-white font-bold py-3 rounded-lg shadow-md hover:opacity-90 transition" style="background-color: ${p.color}">Elegir</button></div>`;
+                });
+                setTimeout(renderCharts, 100);
+            }
+
+            if(state.user) {
+                document.getElementById('ui-balance').innerText = state.user.balance.toFixed(2);
+                document.getElementById('ui-invested').innerText = state.user.invested.toFixed(2);
+                document.getElementById('ui-earnings').innerText = state.user.earnings.toFixed(2);
+                const kycText = state.user.verified ? '<span class="text-green-500">Verificado ✔</span>' : '<span class="text-red-400">No Verificado</span>';
+                document.getElementById('ui-status-content').innerHTML = `<div class="font-bold text-indigo-600">💎 ${state.user.luna || 0} LUNA</div><div class="text-xs text-gray-500">ID: ${state.user.id}</div><div class="text-xs font-bold mt-1">${kycText}</div>`;
+                const btnAuth = document.getElementById('btn-auth'); if(btnAuth) { btnAuth.innerText = "Cerrar Sesión"; btnAuth.classList.replace('bg-yellow-500', 'bg-red-500'); btnAuth.onclick = logout; }
+                document.getElementById('btn-deposit').classList.remove('hidden');
+                if(state.user.verified) {
+                    document.getElementById('btn-withdraw').classList.remove('hidden');
+                    document.getElementById('affiliate-panel').classList.remove('hidden');
+                    document.getElementById('ref-link').value = `https://luna.demo/ref/${state.user.name}-${state.user.id}`;
+                    document.getElementById('btn-kyc').classList.add('hidden');
+                } else {
+                    document.getElementById('btn-withdraw').classList.add('hidden');
+                    document.getElementById('affiliate-panel').classList.add('hidden');
+                    document.getElementById('btn-kyc').classList.remove('hidden');
+                }
+            } else {
+                 const btnAuth = document.getElementById('btn-auth'); if(btnAuth) { btnAuth.innerText = "Cuenta / Registro"; btnAuth.classList.replace('bg-red-500', 'bg-yellow-500'); btnAuth.onclick = () => openModal('auth-modal'); }
+                 document.getElementById('ui-status-content').innerHTML = '<p class="text-xs font-bold text-gray-500 mb-2">Puntos LUNA/USDT</p>';
+                 document.getElementById('btn-kyc').classList.add('hidden');
+                 ['btn-deposit', 'btn-withdraw', 'affiliate-panel'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            }
+            
+            const invList = document.getElementById('investment-list');
+            if (invList) {
+                invList.innerHTML = (state.user && state.user.investments.length) ? '' : '<tr><td colspan="4" class="px-6 py-4 text-center italic">Sin inversiones activas.</td></tr>';
+                if(state.user) { state.user.investments.forEach(inv => { const p = plansConfig[inv.planId]; invList.innerHTML += `<tr class="border-b"><td class="px-6 py-3">${p.name}</td><td class="px-6 py-3">${inv.amount.toFixed(2)}</td><td class="px-6 py-3">${inv.daysLeft}</td><td class="px-6 py-3 text-right text-green-600">Activo</td></tr>`; }); }
+            }
+            renderP2P(); renderReviews();
+        }
+
+        function renderAdminDashboard() {
+            document.getElementById('adm-total-users').innerText = state.usersDB.length;
+            document.getElementById('adm-total-pending').innerText = state.requests.kyc.length + state.requests.deposits.length + state.requests.withdrawals.length;
+            const addRow = (t, r, fn) => `<tr class="border-b hover:bg-gray-50"><td class="px-4 py-2 font-bold text-gray-600">${t}</td><td class="px-4 py-2">${r.uid}</td><td class="px-4 py-2 text-xs">${r.amount ? r.amount+' USDT' : r.name}</td><td class="px-4 py-2 text-right"><button onclick="${fn}(${r.id})" class="bg-green-500 text-white px-2 py-1 rounded text-xs">✔</button></td></tr>`;
+            const tbody = document.getElementById('admin-requests-table'); if (tbody) tbody.innerHTML = ''; // Not present in layout, using separate lists
+            
+            document.getElementById('list-kyc').innerHTML=state.requests.kyc.map((r,i) => `<div class="flex justify-between border-b p-1"><span>${r.name}</span><button onclick="adminApproveKYC(${r.id})" class="text-green-600 font-bold">OK</button></div>`).join('') || 'Vacio';
+            document.getElementById('list-deposits').innerHTML=state.requests.deposits.map((r,i) => `<div class="flex justify-between border-b p-1"><span>${r.amount}</span><button onclick="adminApproveDeposit(${r.id})" class="text-green-600 font-bold">OK</button></div>`).join('') || 'Vacio';
+            document.getElementById('list-withdraws').innerHTML=state.requests.withdrawals.map((r,i) => `<div class="flex justify-between border-b p-1"><span>${r.amount}</span><button onclick="adminApproveWithdraw(${r.id})" class="text-blue-600 font-bold">Pay</button></div>`).join('') || 'Vacio';
+            document.getElementById('list-p2p').innerHTML=state.requests.p2p ? state.requests.p2p.map((r,i) => `<div class="flex justify-between border-b p-1"><span>${r.type.toUpperCase()} ${r.amount}</span><button onclick="admP2P(${i})" class="text-green-600 font-bold">OK</button></div>`).join('') : 'Vacio';
+            
+            const pDiv = document.getElementById('admin-plans-config'); pDiv.innerHTML = '';
+            [1,2,3].forEach(pid => { const p = plansConfig[pid]; pDiv.innerHTML += `<div class="border p-2 rounded bg-gray-50 mb-2"><p class="font-bold text-xs">${p.name}</p><input type="number" step="0.001" id="plan-${pid}-rate" value="${p.rate}" class="w-full border text-xs"><input type="number" id="plan-${pid}-days" value="${p.days}" class="w-full border text-xs"><input type="number" id="plan-${pid}-min" value="${p.min}" class="w-full border text-xs"></div>`; });
+            
+            const uBody = document.getElementById('adm-users-table'); uBody.innerHTML = '';
+            state.usersDB.forEach(u => { uBody.innerHTML += `<tr class="border-b"><td class="px-4 py-1">${u.id}</td><td class="px-4 py-1">${u.name}</td><td class="px-4 py-1">${u.email}</td><td class="px-4 py-1">${u.balance}</td><td class="px-4 py-1">${u.verified?'Si':'No'}</td></tr>`; });
+            
+            const total = state.requests.kyc.length + state.requests.deposits.length + state.requests.withdrawals.length + (state.requests.p2p ? state.requests.p2p.length : 0);
+            const badge = document.getElementById('admin-badge'); if(total > 0) { badge.innerText = total; badge.classList.remove('hidden'); } else { badge.classList.add('hidden'); }
+        }
+
+        // --- EXTRAS ---
+        window.setP2PMode = function(m) { p2pMode=m; renderUserUI(); }
+        window.openCreateAd = function() { if(!state.user) return openModal('auth-modal'); openModal('p2p-create-modal'); }
+        window.doCreateAd = function() {
+            const t=document.getElementById('ad-type').value, p=document.getElementById('ad-price').value, l=document.getElementById('ad-limit').value, m=document.getElementById('ad-method').value;
+            if(!p) return toast('Error');
+            state.p2pAds.push({id:Date.now(), user:state.user.name, type:t, price:p, total:l, method:m});
+            closeModal('p2p-create-modal'); toast('Publicado'); save();
+        }
+        window.copyReferralLink = function() { navigator.clipboard.writeText(document.getElementById('ref-link').value); toast('Copiado'); }
+        window.rate = function(n) { starRating = n; }
+        window.addReview = function() {
+            const n=document.getElementById('review-name').value, t=document.getElementById('review-msg').value;
+            if(!n) return toast('Faltan datos', 'error');
+            state.reviews.unshift({name:n, rating:starRating||5, text:t});
+            renderReviews(); save();
+        }
+        function renderReviews() {
+            const grid = document.getElementById('reviews-grid');
+            grid.innerHTML = '';
+            state.reviews.forEach(r => {
+                grid.innerHTML += `<div class="bg-gray-50 p-4 rounded shadow-sm"><div class="flex justify-between mb-2"><span class="font-bold">${r.name}</span><span class="text-yellow-400">${'★'.repeat(r.rating)}</span></div><p class="text-sm text-gray-600">"${r.text}"</p></div>`;
+            });
+        }
+        window.openAI = function() { openModal('ai-modal'); }
+        window.processAI = function() {
+            document.getElementById('ai-out').classList.remove('hidden');
+            document.getElementById('ai-out').innerText = "Analizando perfil... Recomendación: Diversificar en Plan Avanzado.";
+        }
+        
+        async function renderTicker() {
+            const coins = [{s:'BTC', p:98000}, {s:'ETH', p:3400}, {s:'ZEC', p:45}, {s:'USDT', p:1}];
+            let html = '';
+            coins.forEach(c => {
+                const p = (c.p * (1 + (Math.random()-0.5)*0.02)).toFixed(2);
+                const col = Math.random()>0.5 ? 'price-up' : 'price-down';
+                html += `<span class="ticker-item">${c.s}: $${p} <span class="${col}">0.5%</span></span>`;
+            });
+            document.getElementById('ticker-content').innerHTML = html;
+        }
+
+        function renderCharts() {
+            [1,2,3].forEach(id => {
+                const ctx = document.getElementById(`chart-plan-${id}`);
+                if(ctx) {
+                    const p = plansConfig[id];
+                    const data = Array.from({length: p.days}, (_, i) => 100 * Math.pow(1 + p.rate, i));
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: Array(p.days).fill(''),
+                            datasets: [{ data: data, borderColor: p.color, borderWidth: 2, pointRadius: 0, tension: 0.4 }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: false }, scales: { x: {display:false}, y: {display:false} } }
+                    });
+                }
+            });
+        }
+        window.simRef = function(t) { 
+            const r = t===1?0.5:t===2?1:1.5; 
+            const uIdx = state.usersDB.findIndex(u => u.id === state.user.id);
+            state.usersDB[uIdx].balance+=r; state.usersDB[uIdx].affiliateEarnings = (state.usersDB[uIdx].affiliateEarnings||0)+r; state.user=state.usersDB[uIdx];
+            toast(`+${r} USDT por referido`, 'success'); save(); 
+        }
+    </script>
 </body>
 </html>
