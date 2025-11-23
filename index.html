@@ -3,40 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LUNA - Inversiones & P2P Global</title>
+    <title>LUNA - Plataforma Oficial</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; }
         .hidden { display: none !important; }
         
-        /* CAPAS DE SEGURIDAD (OVERLAYS) */
-        #captcha-overlay, #auth-overlay, #loading-overlay {
+        /* EFECTOS TORNAZOL (PREMIUM) */
+        @keyframes shine-flow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .tornasol-kyc {
+            background: linear-gradient(45deg, #10b981, #34d399, #fbbf24, #4ade80, #10b981);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine-flow 3s ease infinite;
+            filter: drop-shadow(0 0 2px rgba(16, 185, 129, 0.4));
+            display: inline-block;
+        }
+
+        .tornasol-p2p {
+            background: linear-gradient(45deg, #3b82f6, #06b6d4, #8b5cf6, #6366f1, #3b82f6);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine-flow 3s ease infinite;
+            filter: drop-shadow(0 0 2px rgba(59, 130, 246, 0.4));
+            display: inline-block;
+        }
+
+        /* CAPAS DE SEGURIDAD */
+        #captcha-overlay, #auth-overlay, #loading-overlay, #ai-scan-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 9999; display: flex; align-items: center; justify-content: center;
         }
         #captcha-overlay { background-color: #0f172a; }
         #auth-overlay { background-color: rgba(0,0,0,0.92); backdrop-filter: blur(10px); z-index: 9000; }
-        #loading-overlay { background-color: rgba(255,255,255,0.95); z-index: 9500; flex-direction: column; }
-        
-        /* DISEÑO ORIGINAL */
+        #loading-overlay { background-color: rgba(255,255,255,0.98); z-index: 9500; flex-direction: column; }
+        #ai-scan-overlay { background-color: rgba(15, 23, 42, 0.98); z-index: 9600; flex-direction: column; color: #00ffcc; font-family: monospace; }
+
+        /* ESCÁNER IA */
+        .scan-line { width: 100%; height: 2px; background: #00ffcc; box-shadow: 0 0 15px #00ffcc; animation: scan 1.5s infinite linear; }
+        @keyframes scan { 0% { transform: translateY(-100px); opacity: 0; } 50% { opacity: 1; } 100% { transform: translateY(100px); opacity: 0; } }
+        .biometric-box { width: 250px; height: 250px; border: 2px solid #00ffcc; position: relative; overflow: hidden; border-radius: 16px; background: rgba(0, 255, 204, 0.05); display: flex; align-items: center; justify-content: center; }
+        .face-grid { position: absolute; inset: 0; background-image: radial-gradient(#00ffcc 1px, transparent 1px); background-size: 20px 20px; opacity: 0.3; }
+
+        /* GENERAL */
         .header-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
         .ticker-wrap { width: 100%; overflow: hidden; background-color: #0b1120; padding: 10px 0; position: sticky; top: 0; z-index: 40; }
         .ticker { display: inline-block; animation: ticker 60s linear infinite; }
         .ticker-item { display: inline-flex; align-items: center; padding: 0 2rem; color: white; }
         @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
         .price-up { color: #4ade80; margin-left: 5px; }
-        .star-rating { display: flex; flex-direction: row-reverse; justify-content: flex-end; }
-        .star-rating input { display: none; }
-        .star-rating label { cursor: pointer; width: 25px; font-size: 25px; color: #d1d5db; }
-        .star-rating label::before { content: '★'; }
-        .star-rating input:checked ~ label, .star-rating label:hover ~ label { color: #fbbf24; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #eab308; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Rating Stars */
+        .rating-input { display: flex; flex-direction: row-reverse; justify-content: center; gap: 5px; }
+        .rating-input input { display: none; }
+        .rating-input label { cursor: pointer; font-size: 20px; color: #ddd; }
+        .rating-input label:hover, .rating-input label:hover ~ label, .rating-input input:checked ~ label { color: #fbbf24; }
     </style>
 
     <script>
@@ -46,208 +83,282 @@
         const EMAIL_SERVICE_ID = "service_g452uds"; 
         const EMAIL_TEMPLATE_ID = "template_l85jqxg";
         const EMAIL_PUBLIC_KEY = "Zadh0RC8pVuE5vdY1";
+        const IMGBB_API_KEY = "f1660c71afeb0db2d14caaab8fb6d8f3"; 
 
-        /* --- ESTADO GLOBAL --- */
+        /* --- ESTADO --- */
         var plansConfig = { 1: { name: "Inicial", min: 2, days: 15, rate: 0.01, color: '#2563eb' }, 2: { name: "Avanzado", min: 15, days: 10, rate: 0.015, color: '#9333ea' }, 3: { name: "VIP", min: 50, days: 7, rate: 0.02, color: '#eab308' } };
+        
         var state = { 
             user: null, 
             usersDB: [], 
             requests: { kyc:[], deposits:[], withdrawals:[], p2p:[] }, 
+            // Base de datos simulada de comerciantes para los perfiles
+            tradersDB: {
+                'TraderPro': { bio: "Comerciante verificado desde 2023. Rápido y seguro.", orders: 1540, rate: "99%", stars: 4.9, reviews: [{user: "Juan", txt: "Muy rápido", s: 5}] },
+                'CryptoKing': { bio: "Solo transferencias bancarias. No terceros.", orders: 820, rate: "95%", stars: 4.7, reviews: [] }
+            },
             p2pAds: [ 
-                {id:1, user:'TraderPro', type:'sell', price:1.01, limit:'100-5000', fiat:'USD'}, 
-                {id:2, user:'CryptoKing', type:'buy', price:0.99, limit:'50-1000', fiat:'EUR'} 
+                {id:1, user:'TraderPro', uid:'TR001', email:'trader@luna.com', type:'sell', price:1.01, limit:'100-5000', fiat:'USD', verified: true}, 
+                {id:2, user:'CryptoKing', uid:'CK009', email:'king@luna.com', type:'buy', price:0.99, limit:'50-1000', fiat:'EUR', verified: true} 
             ],
             reviews: [ {name:'Ana', rating:5, text:'Excelente servicio.'}, {name:'Luis', rating:4, text:'Muy rápido.'} ]
         };
-        var captchaCode = 0; var selectedPlanId = null; var p2pMode = 'buy'; var starRating = 0;
+        var captchaCode = 0; var selectedPlanId = null; var p2pMode = 'buy';
 
-        /* --- INICIO --- */
         (function(){ emailjs.init(EMAIL_PUBLIC_KEY); })();
 
-        /* --- NOTIFICACIONES INTELIGENTES --- */
-        function notifySystem(tipo, detalles, usuarioData) {
+        /* --- LÓGICA DE PERFILES Y BÚSQUEDA P2P --- */
+        
+        function viewProfile(username) {
+            const trader = state.tradersDB[username] || { bio: "Usuario nuevo en la plataforma.", orders: 0, rate: "N/A", stars: 0, reviews: [] };
+            
+            // Verificar si es un usuario verificado real para poner el badge en el perfil
+            const isVerified = username === 'TraderPro' || username === 'CryptoKing' || (state.user && state.user.name === username && state.user.p2pVerified);
+            const badge = isVerified ? '<i class="fas fa-certificate tornasol-p2p ml-2 text-lg"></i>' : '';
+
+            document.getElementById('prof-name').innerHTML = username + " " + badge;
+            document.getElementById('prof-bio').innerText = trader.bio;
+            document.getElementById('prof-orders').innerText = trader.orders;
+            document.getElementById('prof-rate').innerText = trader.rate;
+            document.getElementById('prof-stars').innerText = "★ " + trader.stars;
+            
+            const revList = document.getElementById('prof-reviews-list');
+            revList.innerHTML = "";
+            if(trader.reviews.length === 0) revList.innerHTML = "<p class='text-gray-400 italic text-xs'>Sin reseñas aún.</p>";
+            trader.reviews.forEach(r => {
+                revList.innerHTML += `<div class="border-b pb-2 mb-2"><div class="flex justify-between"><span class="font-bold text-xs">${r.user}</span><span class="text-yellow-500 text-xs">${'★'.repeat(r.s)}</span></div><p class="text-sm text-gray-600">${r.txt}</p></div>`;
+            });
+
+            document.getElementById('prof-new-comment').value = "";
+            openModal('profile-modal');
+        }
+
+        function submitProfileReview() {
+            // Lógica simplificada para demo
+            const usernameRaw = document.getElementById('prof-name').innerText.trim();
+            // Limpiar el nombre si tiene el icono
+            const username = usernameRaw.replace(' ', ''); 
+            
+            const comment = document.getElementById('prof-new-comment').value;
+            let stars = 5;
+            const radios = document.getElementsByName('prof-rating');
+            for (var i = 0; i < radios.length; i++) { if (radios[i].checked) stars = parseInt(radios[i].value); }
+
+            if(!comment) return toast('Escribe un comentario', 'error');
+            if(comment.length > 140) return toast('Máximo 140 caracteres', 'error');
+
+            toast('Reseña publicada', 'success');
+            closeModal('profile-modal');
+        }
+
+        function searchP2P() {
+            const query = document.getElementById('p2p-search').value.toLowerCase();
+            renderP2P(query);
+        }
+
+        /* --- SUBIDA DE IMÁGENES --- */
+        async function uploadImageToCloud(fileInputId) {
+            const fileInput = document.getElementById(fileInputId);
+            if (fileInput.files.length === 0) return null;
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append("image", file);
+            try {
+                const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData });
+                const data = await response.json();
+                return data.data.url;
+            } catch (error) { return null; }
+        }
+
+        /* --- NOTIFICACIONES --- */
+        function notifySystem(tipo, detalles, usuarioData, fotos = {}) {
             const u = usuarioData || state.user;
             const tel = u.phone || "Desconocido";
-            
-            // Enlaces de acción rápida para WhatsApp
             const linkOk = `https://wa.me/${tel.replace('+','')}?text=Hola ${u.name}, tu solicitud de ${tipo} ha sido APROBADA ✅.`;
             const linkNo = `https://wa.me/${tel.replace('+','')}?text=Hola ${u.name}, tu solicitud de ${tipo} ha sido RECHAZADA ❌.`;
-
-            // WhatsApp al Admin
-            const txt = `🚀 *LUNA ADMIN* 🚀\n📌 ${tipo}\n👤 ${u.name}\n📱 ${tel}\n📧 ${u.email}\n📝 ${detalles}\n\n👇 *ACCIONES:*\n✅ APROBAR: ${linkOk}\n❌ RECHAZAR: ${linkNo}`;
+            let adjuntos = "";
+            if(fotos.frente) adjuntos += `\n🆔 FRENTE: ${fotos.frente}`;
+            if(fotos.dorso) adjuntos += `\n🆔 DORSO: ${fotos.dorso}`;
+            if(fotos.selfie) adjuntos += `\n🤳 SELFIE: ${fotos.selfie}`;
+            if(fotos.unico) adjuntos += `\n📂 ARCHIVO: ${fotos.unico}`;
+            const txt = `🚀 *LUNA ADMIN* 🚀\n📌 ${tipo}\n👤 ${u.name}\n📱 ${tel}\n📧 ${u.email}\n📝 ${detalles}${adjuntos}\n\n👇 *ACCIONES:*\n✅ APROBAR: ${linkOk}\n❌ RECHAZAR: ${linkNo}`;
             const url = `https://api.callmebot.com/whatsapp.php?phone=${WA_PHONE}&text=${encodeURIComponent(txt)}&apikey=${WA_APIKEY}`;
             var img = new Image(); img.src = url;
-
-            // Email al Admin
-            emailjs.send(EMAIL_SERVICE_ID, EMAIL_TEMPLATE_ID, {
-                message: `SOLICITUD: ${tipo}\nUsuario: ${u.name}\nEmail: ${u.email}\nTel: ${tel}\n\nDetalles:\n${detalles}\n\nFecha: ${new Date().toLocaleString()}`
-            }).then(()=>console.log("Email sent")).catch(e=>console.error(e));
+            emailjs.send(EMAIL_SERVICE_ID, EMAIL_TEMPLATE_ID, { message: `SOLICITUD: ${tipo}\nUsuario: ${u.name}\nEmail: ${u.email}\nTel: ${tel}\n\nDetalles:\n${detalles}\n\nAdjuntos:\n${adjuntos}` });
         }
 
-        /* --- CAPTCHA & AUTH --- */
+        /* --- KYC AVANZADO (IA) --- */
+        async function startKYCScan() {
+            const address = document.getElementById('kyc-address').value;
+            const idNum = document.getElementById('kyc-idnum').value;
+            const fFront = document.getElementById('kyc-front').files.length;
+            const fBack = document.getElementById('kyc-back').files.length;
+            const fSelfie = document.getElementById('kyc-selfie').files.length;
+
+            if(!address || !idNum || fFront===0 || fBack===0 || fSelfie===0) return toast('Faltan datos o fotos', 'error');
+
+            showLoading("Encriptando y Subiendo...");
+            const urlFront = await uploadImageToCloud('kyc-front');
+            const urlBack = await uploadImageToCloud('kyc-back');
+            const urlSelfie = await uploadImageToCloud('kyc-selfie');
+            hideLoading();
+
+            if(!urlFront || !urlBack || !urlSelfie) return toast('Error de subida', 'error');
+
+            const overlay = document.getElementById('ai-scan-overlay');
+            const status = document.getElementById('ai-status');
+            overlay.classList.remove('hidden'); overlay.style.display = 'flex';
+
+            const pasos = ["Escaneando biometría...", "Comparando datos...", "Verificando listas...", "Identidad Confirmada."];
+            for (let i = 0; i < pasos.length; i++) { status.innerText = pasos[i]; await new Promise(r => setTimeout(r, 1500)); }
+
+            overlay.classList.add('hidden'); overlay.style.display = 'none';
+
+            state.user.verified = true;
+            notifySystem("KYC COMPLETO (IA)", `Dir: ${address}\nID: ${idNum}`, state.user, { frente: urlFront, dorso: urlBack, selfie: urlSelfie });
+            
+            save(); updateUI(); closeModal('kyc-modal');
+            Swal.fire({ title: '¡Verificado!', text: 'Insignia Verde otorgada.', icon: 'success', confirmButtonColor: '#10b981' });
+        }
+
+        /* --- AUTH & CAPTCHA --- */
         function initCaptcha() { captchaCode = Math.floor(1000+Math.random()*9000); document.getElementById('captcha-display').innerText=captchaCode; }
-        function verifyCaptcha() {
-            if(document.getElementById('captcha-input').value == captchaCode) {
-                document.getElementById('captcha-overlay').style.display='none'; checkSession(); toast('Verificado','success');
-            } else { toast('Código incorrecto','error'); initCaptcha(); document.getElementById('captcha-input').value=''; }
-        }
-        
+        function verifyCaptcha() { if(document.getElementById('captcha-input').value == captchaCode) { document.getElementById('captcha-overlay').style.display='none'; checkSession(); toast('Seguro','success'); } else { toast('Error','error'); initCaptcha(); document.getElementById('captcha-input').value=''; } }
         function checkSession() { if(state.user) showDashboard(); else { document.getElementById('auth-overlay').classList.remove('hidden'); document.getElementById('auth-overlay').style.display='flex'; } }
-        function toggleAuth(m) { 
-            document.getElementById(m==='reg'?'login-box':'reg-box').classList.add('hidden');
-            document.getElementById(m==='reg'?'reg-box':'login-box').classList.remove('hidden');
-        }
+        function toggleAuth(m) { document.getElementById(m==='reg'?'login-box':'reg-box').classList.add('hidden'); document.getElementById(m==='reg'?'reg-box':'login-box').classList.remove('hidden'); }
 
         function doRegister() {
             const n=document.getElementById('reg-name').value, l=document.getElementById('reg-last').value, p=document.getElementById('reg-phone').value, e=document.getElementById('reg-email').value, ps=document.getElementById('reg-pass').value;
             if(!n||!l||!p||!e||!ps) return toast('Faltan datos','error');
-            
-            showLoading("Creando cuenta segura...");
+            showLoading("Registrando...");
             setTimeout(() => {
-                const newUser = { id:'U'+Date.now(), name:n, lastname:l, phone:p, email:e, password:ps, balance:0, invested:0, earnings:0, verified:false, investments:[], affiliateEarnings:0 };
+                const newUser = { id:'U'+Date.now(), name:n, lastname:l, phone:p, email:e, password:ps, balance:0, invested:0, earnings:0, verified:false, p2pVerified:false, investments:[], affiliateEarnings:0 };
                 state.usersDB.push(newUser); state.user=newUser;
-                notifySystem("NUEVO REGISTRO", "Usuario registrado en plataforma", newUser);
+                notifySystem("NUEVO REGISTRO", "Registro manual", newUser);
                 save(); hideLoading(); document.getElementById('auth-overlay').style.display='none'; showDashboard();
-                toast('¡Bienvenido a LUNA!','success');
             }, 1500);
         }
-
         function doLogin() {
             const e=document.getElementById('log-email').value, p=document.getElementById('log-pass').value;
-            if(e==='admin'&&p==='admin') { doAdminLoginAction(); return; }
+            if(e==='admin'&&p==='admin') { document.getElementById('auth-overlay').style.display='none'; document.getElementById('admin-panel').classList.remove('hidden'); document.getElementById('adm-users').innerText=state.usersDB.length; return; }
             const u = state.usersDB.find(x=>x.email===e);
             if(u) { state.user=u; notifySystem("LOGIN", "Usuario regresó", u); }
-            else { state.user={name:'Invitado', email:e, phone:'+000', balance:0, invested:0, earnings:0, verified:false, investments:[]}; }
+            else { state.user={name:'Invitado', email:e, phone:'+000', balance:0, invested:0, earnings:0, verified:false, p2pVerified:false, investments:[]}; }
             save(); document.getElementById('auth-overlay').style.display='none'; showDashboard();
         }
-
         function socialLogin(prov) {
-            showLoading(`Conectando con ${prov}...`);
+            showLoading(`Conectando ${prov}...`);
             setTimeout(()=>{
-                state.user={id:'S'+Date.now(), name:`Usuario ${prov}`, email:`user@${prov}.com`, phone:'+000', balance:0, invested:0, earnings:0, verified:false, investments:[]};
-                notifySystem("LOGIN SOCIAL", `Registro vía ${prov}`, state.user);
+                state.user={id:'S'+Date.now(), name:`Usuario ${prov}`, email:`user@${prov}.com`, phone:'+000', balance:0, invested:0, earnings:0, verified:false, p2pVerified:false, investments:[]};
+                notifySystem("LOGIN SOCIAL", `Vía ${prov}`, state.user);
                 save(); hideLoading(); document.getElementById('auth-overlay').style.display='none'; showDashboard();
             }, 1500);
         }
 
-        /* --- DASHBOARD & LOGIC --- */
-        function showDashboard() {
-            document.getElementById('landing-view').classList.add('hidden');
-            document.getElementById('dashboard-view').classList.remove('hidden');
-            renderUserUI();
-        }
-
-        function renderUserUI() {
+        /* --- DASHBOARD --- */
+        function showDashboard() { document.getElementById('landing-view').classList.add('hidden'); document.getElementById('dashboard-view').classList.remove('hidden'); updateUI(); }
+        function updateUI() {
             if(!state.user) return;
-            // Header Info
-            document.getElementById('nav-user').innerText = state.user.name;
             
-            // Panel Info
+            // BADGES TORNASOL
+            const kycBadge = state.user.verified ? '<i class="fas fa-check-circle tornasol-kyc ml-2 text-lg" title="Identidad Verificada"></i>' : '';
+            const p2pBadge = state.user.p2pVerified ? '<i class="fas fa-certificate tornasol-p2p ml-1 text-lg" title="Merchant P2P"></i>' : '';
+            
+            document.getElementById('nav-user').innerHTML = `${state.user.name} ${kycBadge} ${p2pBadge}`;
             document.getElementById('ui-bal').innerText = state.user.balance.toFixed(2);
             document.getElementById('ui-inv').innerText = state.user.invested.toFixed(2);
             document.getElementById('ui-earn').innerText = state.user.earnings.toFixed(2);
-            
-            // Ref Link
             document.getElementById('ref-link').value = `https://luna.app/ref/${state.user.id}`;
             document.getElementById('ui-aff').innerText = (state.user.affiliateEarnings||0).toFixed(2);
-
-            // Buttons State
-            if(state.user.verified) {
-                document.getElementById('alert-kyc').classList.add('hidden');
-                document.getElementById('btn-wd').disabled=false;
-                document.getElementById('btn-wd').classList.remove('opacity-50');
-            }
-
-            // Investments Table
-            const invList = document.getElementById('investment-list'); invList.innerHTML='';
-            if(!state.user.investments.length) invList.innerHTML='<tr><td colspan="3" class="p-4 text-center text-gray-400">Sin inversiones</td></tr>';
-            state.user.investments.forEach(i => {
-                invList.innerHTML += `<tr class="border-b"><td class="p-3">${plansConfig[i.pid].name}</td><td class="p-3">${i.amount} USDT</td><td class="p-3 font-bold text-blue-600">${i.days} días</td></tr>`;
-            });
-
-            // Charts & P2P
-            renderP2P(); renderReviews(); setTimeout(renderCharts,200);
+            if(state.user.verified) { document.getElementById('alert-kyc').classList.add('hidden'); document.getElementById('btn-wd').disabled=false; document.getElementById('btn-wd').classList.remove('opacity-50'); }
+            renderP2P(); setTimeout(renderCharts,200);
+            const l = document.getElementById('investment-list'); l.innerHTML='';
+            if(!state.user.investments.length) l.innerHTML='<tr><td colspan="3" class="p-4 text-center text-gray-400">Sin inversiones</td></tr>';
+            state.user.investments.forEach(i => { l.innerHTML += `<tr class="border-b"><td class="p-3">${plansConfig[i.pid].name}</td><td class="p-3">${i.amount}</td><td class="p-3 text-blue-600">${i.days} días</td></tr>`; });
         }
 
-        /* --- OPERACIONES FINANCIERAS --- */
-        function doDeposit() {
-            const v=parseFloat(document.getElementById('dep-amount').value);
-            if(!v) return;
-            state.requests.deposits.push({uid:state.user.id, name:state.user.name, amount:v, id:Date.now()});
-            notifySystem("SOLICITUD DEPOSITO", `Monto: ${v} USDT`, state.user);
-            toast('Enviado a revisión','success'); closeModal('dep-modal');
+        /* --- P2P --- */
+        function openCreateAd() { if(!state.user.p2pVerified) { openModal('p2p-deposit-modal'); return; } openModal('p2p-modal'); }
+        function payP2PDeposit() {
+            if(state.user.balance < 10) return toast('Saldo insuficiente (10 USDT)', 'error');
+            state.user.balance -= 10; state.user.p2pVerified = true;
+            notifySystem("DEPOSITO P2P", "Usuario pagó 10 USDT de garantía.", state.user);
+            save(); updateUI(); closeModal('p2p-deposit-modal');
+            Swal.fire({ title: '¡Habilitado!', text: 'Ahora eres Comerciante Verificado (Insignia Azul).', icon: 'success', confirmButtonColor: '#3b82f6' });
+        }
+        function createAd() {
+            const p=document.getElementById('ad-price').value; if(!p) return;
+            state.p2pAds.push({id:Date.now(), user:state.user.name, uid:state.user.id, email:state.user.email, type:document.getElementById('ad-type').value, price:p, limit:'10-500', verified:true});
+            closeModal('p2p-modal'); toast('Publicado','success'); renderP2P();
+        }
+        function setP2P(m) { p2pMode=m; renderP2P(); }
+        
+        function renderP2P(query = "") {
+            const l=document.getElementById('p2p-body'); l.innerHTML='';
+            const f = state.p2pAds.filter(a => {
+                if (a.type !== (p2pMode==='buy'?'sell':'buy')) return false;
+                if (query) { const q = query.toLowerCase(); return (a.user||"").toLowerCase().includes(q) || (a.uid||"").toLowerCase().includes(q) || (a.email||"").toLowerCase().includes(q); }
+                return true;
+            });
+            if(!f.length) { l.innerHTML='<tr><td colspan="5" class="p-4 text-center text-gray-400">No se encontraron resultados</td></tr>'; return; }
+            f.forEach(a => { 
+                // Badge tornasol azul para merchant
+                const badge = a.verified ? '<i class="fas fa-certificate tornasol-p2p ml-1 text-xs" title="Verificado"></i>' : '';
+                const nameLink = `<a href="javascript:void(0)" onclick="viewProfile('${a.user}')" class="text-blue-600 hover:underline">${a.user}</a>`;
+                l.innerHTML += `<tr class="border-b hover:bg-gray-50"><td class="p-3 font-bold text-slate-700">${nameLink} ${badge}</td><td class="p-3 font-mono">${a.price}</td><td class="p-3 text-xs">${a.limit}</td><td class="p-3">${a.fiat||'USD'}</td><td class="p-3"><button class="bg-slate-800 text-white px-3 py-1 rounded text-xs">Operar</button></td></tr>`; 
+            });
+        }
+
+        /* --- OPERACIONES --- */
+        async function doDeposit() {
+            const v=parseFloat(document.getElementById('dep-amount').value); if(!v) return toast('Monto inválido','error');
+            showLoading("Subiendo..."); const url = await uploadImageToCloud('dep-file'); hideLoading();
+            state.requests.deposits.push({uid:state.user.id, name:state.user.name, amount:v, file:url, id:Date.now()});
+            notifySystem("DEPOSITO", `Monto: ${v} USDT`, state.user, {unico: url});
+            toast('Enviado','success'); closeModal('dep-modal');
         }
         function doWithdraw() {
             const v=parseFloat(document.getElementById('wd-amount').value), w=document.getElementById('wd-wallet').value;
             if(v>state.user.balance) return toast('Saldo insuficiente','error');
-            state.user.balance-=v;
-            state.requests.withdrawals.push({uid:state.user.id, name:state.user.name, amount:v, wallet:w, id:Date.now()});
-            notifySystem("SOLICITUD RETIRO", `Monto: ${v} USDT\nWallet: ${w}`, state.user);
-            save(); closeModal('wd-modal'); toast('Solicitud enviada','success'); renderUserUI();
+            state.user.balance-=v; notifySystem("RETIRO", `Monto: ${v} USDT\nWallet: ${w}`, state.user);
+            save(); closeModal('wd-modal'); toast('Solicitud enviada','success'); updateUI();
         }
         function doInvest() {
             const v=parseFloat(document.getElementById('inv-amount').value);
             if(v>state.user.balance) return toast('Saldo insuficiente','error');
             state.user.balance-=v; state.user.invested+=v;
             state.user.investments.push({pid:selectedPlanId, amount:v, days:plansConfig[selectedPlanId].days});
-            notifySystem("NUEVA INVERSION", `Plan: ${plansConfig[selectedPlanId].name}\nMonto: ${v} USDT`, state.user);
-            save(); closeModal('inv-modal'); toast('Inversión activada','success'); renderUserUI();
-        }
-        function doKYC() {
-            state.requests.kyc.push({uid:state.user.id, name:state.user.name, id:Date.now()});
-            notifySystem("KYC ENVIADO", "Usuario subió documentos", state.user);
-            state.user.verified=true; // Simulado
-            save(); closeModal('kyc-modal'); toast('Documentos enviados','success'); renderUserUI();
+            notifySystem("INVERSION", `Plan: ${selectedPlanId}\nMonto: ${v}`, state.user);
+            save(); closeModal('inv-modal'); toast('Inversión activada','success'); updateUI();
         }
         function simulateDay() {
             if(!state.user) return;
             let p=0; state.user.investments.forEach(i=>{ if(i.days>0){ const g=i.amount*plansConfig[i.pid].rate; p+=g; state.user.balance+=g; state.user.earnings+=g; i.days--; }});
-            save(); renderUserUI(); toast(`Ganancia diaria: +${p.toFixed(2)} USDT`,'success');
+            save(); updateUI(); toast(`Ganancia: +${p.toFixed(2)}`,'success');
         }
 
-        /* --- P2P --- */
-        function setP2P(m) { p2pMode=m; renderP2P(); }
-        function renderP2P() {
-            const l=document.getElementById('p2p-body'); l.innerHTML='';
-            const f = state.p2pAds.filter(a => a.type === (p2pMode==='buy'?'sell':'buy'));
-            if(!f.length) l.innerHTML='<tr><td colspan="5" class="p-4 text-center text-gray-400">No hay anuncios</td></tr>';
-            f.forEach(a => {
-                l.innerHTML += `<tr class="border-b hover:bg-gray-50"><td class="p-3 font-bold">${a.user}</td><td class="p-3">${a.price}</td><td class="p-3">${a.limit}</td><td class="p-3">${a.fiat||'USD'}</td><td class="p-3"><button class="bg-slate-800 text-white px-3 py-1 rounded text-xs">Operar</button></td></tr>`;
-            });
-        }
-        function createAd() {
-            const p=document.getElementById('ad-price').value, l=document.getElementById('ad-limit').value;
-            if(!p) return;
-            state.p2pAds.push({id:Date.now(), user:state.user.name, type:document.getElementById('ad-type').value, price:p, limit:l});
-            closeModal('p2p-modal'); toast('Anuncio publicado','success'); renderP2P();
-        }
-
-        /* --- ADMIN & UTILS --- */
-        function doAdminLoginAction() { document.getElementById('auth-overlay').style.display='none'; document.getElementById('admin-panel').classList.remove('hidden'); updateAdmin(); }
-        function updateAdmin() {
-            document.getElementById('adm-users').innerText = state.usersDB.length;
-            document.getElementById('adm-list-dep').innerHTML = state.requests.deposits.map(r=>`<div class="flex justify-between border-b p-2"><span>${r.name} - ${r.amount} USDT</span><span class="text-green-600">Pendiente</span></div>`).join('') || 'Vacio';
-            document.getElementById('adm-list-wd').innerHTML = state.requests.withdrawals.map(r=>`<div class="flex justify-between border-b p-2"><span>${r.name} - ${r.amount} USDT</span><span class="text-red-600">Pendiente</span></div>`).join('') || 'Vacio';
-        }
-        function toggleAdmin() { document.getElementById('admin-panel').classList.add('hidden'); document.getElementById('dashboard-view').classList.remove('hidden'); }
-        
+        /* --- UTILS --- */
         function showLoading(t) { document.getElementById('load-txt').innerText=t; document.getElementById('loading-overlay').classList.remove('hidden'); document.getElementById('loading-overlay').style.display='flex'; }
         function hideLoading() { document.getElementById('loading-overlay').style.display='none'; }
-        function toast(m,t) { const x=document.getElementById('toast'); x.innerText=m; x.className=`fixed bottom-5 right-5 px-6 py-3 rounded shadow-xl text-white z-50 ${t==='success'?'bg-green-600':'bg-gray-800'} opacity-100`; setTimeout(()=>x.classList.add('opacity-0'),3000); }
-        function save() { localStorage.setItem('lunaUltimate', JSON.stringify(state)); }
+        function toast(m,t) { const x=document.getElementById('toast'); x.innerText=m; x.className=`fixed bottom-5 right-5 px-6 py-3 rounded shadow-xl text-white z-50 ${t==='success'?'bg-green-600':'bg-red-600'} opacity-100`; setTimeout(()=>x.classList.add('opacity-0'),3000); }
+        function save() { localStorage.setItem('lunaUltimateTornasol', JSON.stringify(state)); }
         function openModal(id) { document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex'); }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.getElementById(id).classList.remove('flex'); }
         function startInv(id) { if(!state.user) return; selectedPlanId=id; document.getElementById('inv-min').innerText=plansConfig[id].min; openModal('inv-modal'); }
         function renderCharts() { [1,2,3].forEach(id=>{ const c=document.getElementById('ch-'+id); if(c) new Chart(c,{type:'line',data:{labels:[1,2,3,4,5],datasets:[{data:[10,12,15,14,18],borderColor:plansConfig[id].color,borderWidth:2}]},options:{plugins:{legend:false},scales:{x:{display:false},y:{display:false}}}}); }); }
+        function toggleAdmin() { document.getElementById('admin-panel').classList.add('hidden'); document.getElementById('dashboard-view').classList.remove('hidden'); }
 
-        window.onload = function() { initCaptcha(); const s=localStorage.getItem('lunaUltimate'); if(s) state=JSON.parse(s); renderTicker(); };
-        async function renderTicker() { document.getElementById('ticker').innerHTML = `<span class="ticker-item">BTC: $98,500 <span class="price-up">+1%</span></span> <span class="ticker-item">ETH: $3,420</span> <span class="ticker-item">USDT: $1.00</span>`; }
+        window.onload = function() { initCaptcha(); const s=localStorage.getItem('lunaUltimateTornasol'); if(s) state=JSON.parse(s); renderTicker(); };
+        async function renderTicker() { document.getElementById('ticker').innerHTML = `<span class="ticker-item">BTC: $98,500 <span class="price-up">+1%</span></span> <span class="ticker-item">ETH: $3,420</span>`; }
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="flex flex-col min-h-screen bg-slate-50 text-slate-900">
 
     <div id="loading-overlay" class="hidden"><div class="spinner mb-4"></div><p id="load-txt" class="font-bold text-slate-700">Cargando...</p></div>
     <div id="toast" class="fixed bottom-5 right-5 px-6 py-3 rounded shadow-xl text-white opacity-0 transition-opacity duration-300 z-50 pointer-events-none bg-gray-800"></div>
+
+    <div id="ai-scan-overlay" class="hidden"><div class="biometric-box mb-6"><div class="face-grid"></div><div class="scan-line"></div><div class="absolute inset-0 flex items-center justify-center opacity-50"><i class="fas fa-user-astronaut text-7xl text-emerald-400"></i></div></div><h2 class="text-3xl font-bold text-emerald-400 mb-2 tracking-widest">LUNA IA</h2><p id="ai-status" class="text-emerald-200 text-sm font-mono animate-pulse">Iniciando...</p></div>
 
     <div id="captcha-overlay">
         <div class="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-sm border-4 border-slate-800">
@@ -259,14 +370,13 @@
     </div>
 
     <div id="auth-overlay" class="hidden">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div class="bg-slate-900 p-6 text-center"><h2 class="text-3xl font-bold text-yellow-400">LUNA</h2><p class="text-gray-400 text-sm">Acceso Seguro</p></div>
             <div class="p-8">
                 <div class="grid grid-cols-2 gap-4 mb-6">
                     <button onclick="socialLogin('Google')" class="border p-2 rounded hover:bg-slate-50 flex justify-center gap-2 font-bold text-sm"><span class="text-blue-500">G</span> Google</button>
                     <button onclick="socialLogin('Facebook')" class="border p-2 rounded hover:bg-slate-50 flex justify-center gap-2 font-bold text-sm"><span class="text-blue-700">f</span> Facebook</button>
                 </div>
-                
                 <div id="reg-box">
                     <div class="grid grid-cols-2 gap-2 mb-2"><input id="reg-name" placeholder="Nombre" class="border p-2 rounded text-sm"><input id="reg-last" placeholder="Apellido" class="border p-2 rounded text-sm"></div>
                     <input id="reg-phone" placeholder="WhatsApp (+1...)" class="w-full border p-2 rounded mb-2 text-sm">
@@ -275,7 +385,6 @@
                     <button onclick="doRegister()" class="w-full bg-blue-600 text-white py-3 rounded font-bold hover:bg-blue-700">CREAR CUENTA</button>
                     <p onclick="toggleAuth('log')" class="text-center text-xs mt-4 cursor-pointer text-blue-600 hover:underline">¿Ya tienes cuenta? Entrar</p>
                 </div>
-                
                 <div id="login-box" class="hidden">
                     <input id="log-email" placeholder="Correo" class="w-full border p-3 rounded mb-3">
                     <input id="log-pass" type="password" placeholder="Contraseña" class="w-full border p-3 rounded mb-6">
@@ -290,90 +399,24 @@
 
     <div id="dashboard-view" class="hidden relative z-10 flex flex-col min-h-screen">
         <div class="ticker-wrap"><div class="ticker" id="ticker"></div></div>
-        
         <header class="bg-white shadow p-4 sticky top-0 z-30 flex justify-between items-center">
             <h1 class="font-bold text-xl text-slate-800">LUNA <span class="text-xs text-yellow-500">PRO</span></h1>
-            <div class="flex items-center gap-3">
-                <span class="text-sm font-bold" id="nav-user">User</span>
-                <button onclick="localStorage.clear();location.reload()" class="text-xs text-red-500 border border-red-200 px-2 py-1 rounded">Salir</button>
-            </div>
+            <div class="flex items-center gap-3"><span class="text-sm font-bold text-slate-700" id="nav-user">User</span><button onclick="localStorage.clear();location.reload()" class="text-xs text-red-500 border border-red-200 px-2 py-1 rounded">Salir</button></div>
         </header>
-
         <main class="flex-grow p-4 max-w-6xl mx-auto w-full">
-            <div id="alert-kyc" class="bg-red-100 text-red-700 p-3 rounded mb-6 text-sm flex justify-between"><span>⚠️ Cuenta no verificada.</span> <button onclick="openModal('kyc-modal')" class="underline font-bold">Verificar</button></div>
-
+            <div id="alert-kyc" class="bg-red-100 text-red-700 p-3 rounded mb-6 text-sm flex justify-between"><span>⚠️ Cuenta no verificada.</span> <button onclick="openModal('kyc-modal')" class="underline font-bold">Verificar con IA</button></div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                 <div class="bg-white p-6 rounded-xl shadow border-l-4 border-blue-500"><p class="text-xs uppercase font-bold text-gray-500">Saldo</p><h2 class="text-3xl font-bold"><span id="ui-bal">0.00</span> USDT</h2></div>
                 <div class="bg-white p-6 rounded-xl shadow border-l-4 border-purple-500"><p class="text-xs uppercase font-bold text-gray-500">Invertido</p><h2 class="text-3xl font-bold"><span id="ui-inv">0.00</span> USDT</h2></div>
                 <div class="bg-white p-6 rounded-xl shadow border-l-4 border-green-500"><p class="text-xs uppercase font-bold text-gray-500">Ganancia</p><h2 class="text-3xl font-bold text-green-600">+<span id="ui-earn">0.00</span></h2></div>
             </div>
-
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <button onclick="openModal('dep-modal')" class="bg-green-600 text-white py-3 rounded-lg font-bold shadow hover:bg-green-700">Depositar</button>
                 <button id="btn-wd" onclick="openModal('wd-modal')" disabled class="bg-red-500 text-white py-3 rounded-lg font-bold shadow opacity-50">Retirar</button>
                 <button onclick="simulateDay()" class="bg-indigo-600 text-white py-3 rounded-lg font-bold shadow">Simular Día</button>
-                <button onclick="openModal('p2p-modal')" class="bg-slate-800 text-white py-3 rounded-lg font-bold shadow">Crear Anuncio</button>
+                <button onclick="openCreateAd()" class="bg-slate-800 text-white py-3 rounded-lg font-bold shadow">Crear Anuncio</button>
             </div>
-
-            <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-xl mb-8 flex flex-wrap gap-2 items-center">
-                <span class="font-bold text-sm text-yellow-800">Enlace de Afiliado:</span>
-                <input id="ref-link" readonly class="flex-grow p-1 text-xs border rounded" value="...">
-                <span class="text-xs font-bold">Ganado: <span id="ui-aff">0.00</span> USDT</span>
-            </div>
-
-            <h3 class="font-bold text-xl mb-4">Planes de Inversión</h3>
+            <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-xl mb-8 flex flex-wrap gap-2 items-center"><span class="font-bold text-sm text-yellow-800">Enlace de Afiliado:</span><input id="ref-link" readonly class="flex-grow p-1 text-xs border rounded" value="..."> <span class="text-xs font-bold">Ganado: <span id="ui-aff">0.00</span> USDT</span></div>
+            
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-white p-5 rounded-xl shadow border-t-4 border-blue-500 hover:scale-105 transition">
-                    <h4 class="font-bold text-lg text-blue-600">Inicial</h4>
-                    <p class="text-3xl font-bold my-2">1.0% <span class="text-sm text-gray-400">/día</span></p>
-                    <p class="text-xs text-gray-500 mb-4">Min: 2 USDT | 15 Días</p>
-                    <div class="h-20 mb-2"><canvas id="ch-1"></canvas></div>
-                    <button onclick="startInv(1)" class="w-full bg-slate-100 text-slate-900 py-2 rounded font-bold hover:bg-slate-200">Elegir</button>
-                </div>
-                <div class="bg-white p-5 rounded-xl shadow border-t-4 border-purple-500 hover:scale-105 transition">
-                    <h4 class="font-bold text-lg text-purple-600">Avanzado</h4>
-                    <p class="text-3xl font-bold my-2">1.5% <span class="text-sm text-gray-400">/día</span></p>
-                    <p class="text-xs text-gray-500 mb-4">Min: 15 USDT | 10 Días</p>
-                    <div class="h-20 mb-2"><canvas id="ch-2"></canvas></div>
-                    <button onclick="startInv(2)" class="w-full bg-purple-600 text-white py-2 rounded font-bold hover:bg-purple-700">Elegir</button>
-                </div>
-                <div class="bg-white p-5 rounded-xl shadow border-t-4 border-yellow-500 hover:scale-105 transition">
-                    <h4 class="font-bold text-lg text-yellow-600">VIP</h4>
-                    <p class="text-3xl font-bold my-2">2.0% <span class="text-sm text-gray-400">/día</span></p>
-                    <p class="text-xs text-gray-500 mb-4">Min: 50 USDT | 7 Días</p>
-                    <div class="h-20 mb-2"><canvas id="ch-3"></canvas></div>
-                    <button onclick="startInv(3)" class="w-full bg-yellow-500 text-black py-2 rounded font-bold hover:bg-yellow-400">Elegir</button>
-                </div>
-            </div>
-
-            <div class="bg-white p-6 rounded-xl shadow mb-8">
-                <div class="flex justify-between mb-4"><h3 class="font-bold text-lg">Mercado P2P</h3><div><button onclick="setP2P('buy')" class="text-xs bg-green-100 px-2 py-1 rounded text-green-800 font-bold">Compra</button> <button onclick="setP2P('sell')" class="text-xs bg-red-100 px-2 py-1 rounded text-red-800 font-bold">Venta</button></div></div>
-                <div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-gray-100"><tr><th class="p-3">Usuario</th><th class="p-3">Precio</th><th class="p-3">Límite</th><th class="p-3">Fiat</th><th class="p-3">Acción</th></tr></thead><tbody id="p2p-body"></tbody></table></div>
-            </div>
-
-            <div class="bg-white p-6 rounded-xl shadow">
-                <h3 class="font-bold text-lg mb-4 border-b pb-2">Mis Inversiones Activas</h3>
-                <table class="w-full text-sm text-left"><thead class="bg-gray-50"><tr><th class="p-3">Plan</th><th class="p-3">Monto</th><th class="p-3">Días</th></tr></thead><tbody id="investment-list"></tbody></table>
-            </div>
-        </main>
-    </div>
-
-    <div id="admin-panel" class="hidden fixed inset-0 bg-gray-100 z-50 overflow-auto">
-        <div class="bg-slate-800 text-white p-4 flex justify-between sticky top-0"><h3>Admin Panel</h3> <button onclick="toggleAdmin()">Cerrar</button></div>
-        <div class="p-4">
-            <div class="bg-white p-4 rounded shadow mb-4">Usuarios: <span id="adm-users" class="font-bold">0</span></div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="bg-white p-4 rounded shadow"><h4 class="font-bold border-b mb-2">Depósitos Pendientes</h4><div id="adm-list-dep"></div></div>
-                <div class="bg-white p-4 rounded shadow"><h4 class="font-bold border-b mb-2">Retiros Pendientes</h4><div id="adm-list-wd"></div></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="dep-modal" class="hidden fixed inset-0 bg-black/70 items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h3 class="font-bold text-xl mb-4">Depositar</h3><p class="bg-gray-100 p-2 text-xs mb-4 break-all">Wallet: 0xc0bd...d51bf8</p><input type="number" id="dep-amount" placeholder="Monto" class="border w-full p-2 mb-4"><button onclick="doDeposit()" class="bg-green-600 text-white w-full py-2 rounded font-bold">Confirmar</button><button onclick="closeModal('dep-modal')" class="w-full mt-2 text-sm">Cancelar</button></div></div>
-    <div id="wd-modal" class="hidden fixed inset-0 bg-black/70 items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h3 class="font-bold text-xl mb-4">Retirar</h3><input id="wd-wallet" placeholder="Wallet" class="border w-full p-2 mb-2"><input type="number" id="wd-amount" placeholder="Monto" class="border w-full p-2 mb-4"><button onclick="doWithdraw()" class="bg-red-600 text-white w-full py-2 rounded font-bold">Solicitar</button><button onclick="closeModal('wd-modal')" class="w-full mt-2 text-sm">Cancelar</button></div></div>
-    <div id="inv-modal" class="hidden fixed inset-0 bg-black/70 items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h3 class="font-bold text-xl mb-4">Invertir</h3><p class="text-sm mb-2">Min: <span id="inv-min"></span></p><input type="number" id="inv-amount" placeholder="Monto" class="border w-full p-2 mb-4"><button onclick="doInvest()" class="bg-blue-600 text-white w-full py-2 rounded font-bold">Confirmar</button><button onclick="closeModal('inv-modal')" class="w-full mt-2 text-sm">Cancelar</button></div></div>
-    <div id="kyc-modal" class="hidden fixed inset-0 bg-black/70 items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h3 class="font-bold text-xl mb-4">Verificar</h3><p class="text-sm mb-4">Sube documentos</p><button onclick="doKYC()" class="bg-slate-900 text-white w-full py-2 rounded font-bold">Enviar</button><button onclick="closeModal('kyc-modal')" class="w-full mt-2 text-sm">Cancelar</button></div></div>
-    <div id="p2p-modal" class="hidden fixed inset-0 bg-black/70 items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h3 class="font-bold text-xl mb-4">Crear Anuncio</h3><select id="ad-type" class="border w-full p-2 mb-2"><option value="buy">Comprar</option><option value="sell">Vender</option></select><input id="ad-price" placeholder="Precio" class="border w-full p-2 mb-2"><input id="ad-limit" placeholder="Límite" class="border w-full p-2 mb-4"><button onclick="createAd()" class="bg-blue-600 text-white w-full py-2 rounded font-bold">Publicar</button><button onclick="closeModal('p2p-modal')" class="w-full mt-2 text-sm">Cancelar</button></div></div>
-
-</body>
-</html>
+                <div class="bg-white p-5 rounded-xl shadow border-t-4 border-blue-500 hover:scale-105 transition"><h4 class="font-bold text-lg text-blue-600
