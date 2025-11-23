@@ -10,8 +10,6 @@
         body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; }
         .header-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
         .hidden { display: none !important; }
-        
-        /* Ticker Animation */
         .ticker-wrap {
             width: 100%; overflow: hidden; background-color: #0b1120; 
             padding: 10px 0; white-space: nowrap; position: sticky; top: 0; z-index: 50; border-bottom: 1px solid #1e293b;
@@ -19,18 +17,18 @@
         .ticker { display: inline-block; animation: ticker 60s linear infinite; }
         .ticker-item { display: inline-flex; align-items: center; padding: 0 2rem; color: white; font-weight: 600; font-size: 0.9rem; }
         @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-        
         .price-up { color: #4ade80; margin-left: 5px; }
-        .price-down { color: #f87171; margin-left: 5px; }
-
-        .chat-anim { animation: float 3s ease-in-out infinite; }
-        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
 
     <div class="ticker-wrap">
-        <div class="ticker" id="ticker-content">Cargando precios de mercado... BTC: $98,000... ETH: $3,400...</div>
+        <div class="ticker">
+            <span class="ticker-item">BTC: $98,200 <span class="price-up">+1.2%</span></span>
+            <span class="ticker-item">ETH: $3,450 <span class="price-up">+0.8%</span></span>
+            <span class="ticker-item">BNB: $650 <span class="price-up">+0.5%</span></span>
+            <span class="ticker-item">USDT: $1.00 <span class="text-gray-400">0.0%</span></span>
+        </div>
     </div>
 
     <header class="header-bg text-white shadow-lg z-40">
@@ -40,7 +38,7 @@
             </div>
             
             <nav class="flex flex-wrap justify-center gap-4 items-center">
-                <button onclick="openModal('admin-login-modal')" class="text-gray-400 hover:text-white" title="Admin">🔒</button>
+                <button onclick="openModal('admin-login-modal')" class="text-gray-400 hover:text-white text-xl">🔒</button>
                 <button onclick="scrollToId('planes')" class="hover:text-yellow-400 font-medium text-sm">Planes</button>
                 <button onclick="scrollToId('account')" class="hover:text-yellow-400 font-medium text-sm">Mi Cuenta</button>
                 <button onclick="scrollToId('p2p')" class="text-green-400 hover:text-green-300 font-bold text-sm border border-green-500 px-2 py-1 rounded">P2P</button>
@@ -58,22 +56,15 @@
 
     <div id="admin-panel" class="hidden bg-gray-100 min-h-screen border-b-4 border-red-500 shadow-inner absolute top-0 left-0 w-full z-50">
         <div class="bg-gray-900 text-white p-4 flex justify-between items-center sticky top-0">
-            <h3 class="text-xl font-bold flex items-center gap-2">👮 LUNA Admin</h3>
+            <h3 class="text-xl font-bold flex items-center gap-2">Panel Admin</h3>
             <button onclick="toggleAdmin()" class="text-red-400 font-bold hover:text-red-300 text-sm">Cerrar</button>
         </div>
         <div class="p-6">
+            <h2 class="text-2xl font-bold mb-4">Estadísticas Globales</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div class="bg-white p-4 rounded shadow border-l-4 border-blue-500"><p class="text-gray-500">Usuarios</p><p class="text-2xl font-bold">1,240</p></div>
-                <div class="bg-white p-4 rounded shadow border-l-4 border-green-500"><p class="text-gray-500">Depósitos Hoy</p><p class="text-2xl font-bold">$45,000</p></div>
+                <div class="bg-white p-4 rounded shadow border-l-4 border-blue-500"><p class="text-gray-500">Usuarios Totales</p><p class="text-2xl font-bold">1,240</p></div>
+                <div class="bg-white p-4 rounded shadow border-l-4 border-green-500"><p class="text-gray-500">Capital en Custodia</p><p class="text-2xl font-bold">$450,000</p></div>
                 <div class="bg-white p-4 rounded shadow border-l-4 border-yellow-500"><p class="text-gray-500">Retiros Pendientes</p><p class="text-2xl font-bold">3</p></div>
-            </div>
-            <div class="bg-white p-6 rounded shadow">
-                <h4 class="font-bold mb-4">Solicitudes Recientes</h4>
-                <table class="w-full text-sm text-left"><thead class="bg-gray-100"><tr><th>Usuario</th><th>Tipo</th><th>Monto</th><th>Estado</th></tr></thead>
-                <tbody>
-                    <tr><td>Usuario123</td><td>Retiro</td><td>$500</td><td class="text-yellow-600 font-bold">Pendiente</td></tr>
-                    <tr><td>AnaPerez</td><td>Depósito</td><td>$1000</td><td class="text-green-600 font-bold">Aprobado</td></tr>
-                </tbody></table>
             </div>
         </div>
     </div>
@@ -82,7 +73,7 @@
             
         <section class="text-center mb-16 bg-white p-8 rounded-2xl shadow-xl relative overflow-hidden">
             <h2 class="text-4xl md:text-6xl font-extrabold text-slate-900 mb-4">Inversiones <span class="text-yellow-500">To The Moon</span> 🚀</h2>
-            <p class="text-lg text-gray-600 mb-8">Rentabilidad diaria en USDT (BEP20).</p>
+            <p class="text-lg text-gray-600 mb-8">Rentabilidad diaria asegurada en USDT.</p>
         </section>
 
         <section id="planes" class="mb-16">
@@ -117,8 +108,7 @@
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
                     <thead class="bg-gray-100 uppercase"><tr><th class="px-4 py-3">Usuario</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Precio</th><th class="px-4 py-3">Acción</th></tr></thead>
-                    <tbody id="p2p-table-body">
-                        </tbody>
+                    <tbody id="p2p-table-body"></tbody>
                 </table>
             </div>
         </section>
@@ -159,3 +149,134 @@
 
     <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
         <div class="bg-white p-6 rounded-xl w-full max-w-sm">
+            <h4 class="text-2xl font-bold mb-4">Registro</h4>
+            <input id="reg-name" type="text" placeholder="Tu Nombre" class="w-full border p-2 rounded mb-2">
+            <button onclick="doLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded mb-2">Entrar</button>
+            <button onclick="closeModal('auth-modal')" class="w-full text-gray-500">Cancelar</button>
+        </div>
+    </div>
+    
+    <div id="invest-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-full max-w-sm">
+            <h4 class="text-xl font-bold mb-2">Invertir</h4>
+            <p class="text-sm text-gray-500 mb-4">Monto mínimo: <span id="inv-min"></span> USDT</p>
+            <input id="inv-amount" type="number" class="w-full border p-2 rounded mb-4" placeholder="Cantidad a invertir">
+            <button onclick="doInvest()" class="w-full bg-blue-600 text-white rounded py-2">Confirmar Inversión</button>
+            <button onclick="closeModal('invest-modal')" class="w-full mt-2 text-gray-500">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="deposit-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-full max-w-sm">
+            <h4 class="text-xl font-bold mb-4">Depositar</h4>
+            <div class="bg-gray-100 p-2 rounded mb-4 text-center text-xs break-all"><span class="font-bold block mb-1">WALLET EMPRESA:</span>0xc0bd02951cc4858bd1f759ddd10f632a69d51bf8</div>
+            <input id="dep-amount" type="number" placeholder="Cantidad" class="w-full border p-2 rounded mb-4">
+            <button onclick="doDeposit()" class="w-full bg-green-600 text-white rounded py-2">Confirmar Envío</button>
+            <button onclick="closeModal('deposit-modal')" class="w-full mt-2 text-gray-500">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="withdraw-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-full max-w-sm">
+            <h4 class="text-xl font-bold mb-4">Retirar</h4>
+            <input id="wd-amount" type="number" placeholder="Cantidad a retirar" class="w-full border p-2 rounded mb-4">
+            <button onclick="doWithdraw()" class="w-full bg-red-500 text-white rounded py-2">Solicitar Retiro</button>
+            <button onclick="closeModal('withdraw-modal')" class="w-full mt-2 text-gray-500">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="kyc-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-full max-w-sm">
+            <h4 class="text-xl font-bold mb-4">Verificar Identidad</h4>
+            <p class="mb-4 text-sm">Sube tu documento para habilitar retiros.</p>
+            <button onclick="processKYC()" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg">Enviar Documentos</button>
+            <button onclick="closeModal('kyc-modal')" class="w-full text-gray-500 mt-2">Cerrar</button>
+        </div>
+    </div>
+
+    <div id="admin-login-modal" class="fixed inset-0 bg-gray-900 bg-opacity-90 hidden items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-xl w-full max-w-sm border-t-4 border-red-600">
+            <h4 class="text-2xl font-bold mb-2 text-red-600 text-center">Admin Access</h4>
+            <button onclick="doAdminLogin()" class="w-full bg-red-600 text-white font-bold py-3 rounded hover:bg-red-700 transition">Entrar al Panel</button>
+            <button onclick="closeModal('admin-login-modal')" class="w-full text-gray-400 text-sm mt-4 text-center">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="p2p-create-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-full max-w-sm">
+            <h4 class="text-xl font-bold mb-4">Publicar Anuncio</h4>
+            <select id="ad-type" class="w-full border p-2 rounded mb-2"><option value="buy">Comprar</option><option value="sell">Vender</option></select>
+            <input id="ad-price" type="number" placeholder="Precio" class="w-full border p-2 rounded mb-2">
+            <button onclick="doCreateAd()" class="w-full bg-blue-600 text-white rounded py-2">Publicar</button>
+            <button onclick="closeModal('p2p-create-modal')" class="w-full mt-2 text-gray-500">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="ai-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-full max-w-md">
+            <h4 class="text-xl font-bold mb-4">IA Advisor</h4>
+            <p class="bg-gray-100 p-3 rounded text-sm">🤖 Análisis: El mercado muestra volatilidad. Se recomienda diversificar en el Plan Avanzado.</p>
+            <button onclick="closeModal('ai-modal')" class="w-full text-gray-500 mt-4 text-sm">Cerrar</button>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-5 right-5 bg-gray-800 text-white px-6 py-3 rounded shadow-xl translate-y-24 opacity-0 transition-all duration-300 z-50 font-semibold text-sm"></div>
+
+    <script>
+        console.log("INICIO DE SCRIPT LUNA");
+
+        const plansConfig = {
+            1: { name: "Inicial", min: 2, days: 15, rate: 0.01 },
+            2: { name: "Avanzado", min: 15, days: 10, rate: 0.015 },
+            3: { name: "VIP", min: 50, days: 7, rate: 0.02 }
+        };
+
+        let state = {
+            user: null, 
+            p2pAds: [
+                {id:1, user:'PedroCrypto', type:'sell', price:1.02},
+                {id:2, user:'AnaTrade', type:'buy', price:0.99}
+            ]
+        };
+        let selectedPlanId = null;
+
+        window.onload = function() {
+            const saved = localStorage.getItem('lunaUserV3');
+            if(saved) state.user = JSON.parse(saved);
+            
+            renderP2P();
+            renderUserUI();
+        };
+
+        window.openModal = function(id) { document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex'); }
+        window.closeModal = function(id) { document.getElementById(id).classList.add('hidden'); document.getElementById(id).classList.remove('flex'); }
+        window.scrollToId = function(id) { document.getElementById(id).scrollIntoView({behavior:'smooth'}); }
+        window.openAI = function() { openModal('ai-modal'); }
+        window.toggleAdmin = function() { document.getElementById('admin-panel').classList.add('hidden'); }
+        
+        window.doLogin = function() {
+            const name = document.getElementById('reg-name').value;
+            if(!name) return toast("Escribe un nombre", "error");
+            state.user = { name: name, balance: 0, invested: 0, earnings: 0, verified: false, investments: [] };
+            saveUser();
+            toast("Bienvenido " + name, "success");
+            closeModal('auth-modal');
+            renderUserUI();
+        };
+
+        window.renderUserUI = function() {
+            if(state.user) {
+                document.getElementById('btn-auth').classList.add('hidden');
+                document.getElementById('user-info-display').classList.remove('hidden');
+                document.getElementById('nav-username').innerText = state.user.name;
+                
+                document.getElementById('ui-balance').innerText = state.user.balance.toFixed(2);
+                document.getElementById('ui-invested').innerText = state.user.invested.toFixed(2);
+                document.getElementById('ui-earnings').innerText = state.user.earnings.toFixed(2);
+
+                document.getElementById('btn-deposit').classList.remove('opacity-50', 'cursor-not-allowed');
+                document.getElementById('btn-withdraw').classList.remove('opacity-50', 'cursor-not-allowed');
+
+                if(state.user.verified) {
+                    document.getElementById('btn-kyc').classList.add('hidden');
+                    document.getElementById('kyc-
